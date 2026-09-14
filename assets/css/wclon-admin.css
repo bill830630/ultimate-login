@@ -1,0 +1,269 @@
+/* === 終極登入 — 後台設定頁樣式 === */
+
+.wclon-admin-wrap {
+    max-width: 900px;
+}
+
+.wclon-admin-header {
+    margin: 16px 0 20px;
+}
+
+.wclon-admin-header h1 {
+    margin: 0 0 4px;
+    padding: 0;
+    font-size: 21px;
+}
+
+.wclon-admin-header p {
+    margin: 0;
+    color: #646970;
+    font-size: 13px;
+}
+
+/* ── Tab 導覽 ── */
+.wclon-admin-wrap .nav-tab-wrapper {
+    margin-bottom: 0;
+    border-bottom: 1px solid #dcdcde;
+}
+
+.wclon-admin-wrap .nav-tab {
+    font-size: 14px;
+}
+
+/* ── 卡片 ── */
+.wclon-card {
+    background: #fff;
+    border: 1px solid #dcdcde;
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin: 20px 0;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, .03);
+}
+
+.wclon-card + .wclon-card {
+    margin-top: 16px;
+}
+
+.wclon-card__title {
+    margin: 0 0 4px;
+    padding: 0;
+    font-size: 15px;
+    line-height: 1.4;
+}
+
+.wclon-card__title:first-child {
+    margin-top: 0;
+}
+
+.wclon-card__desc {
+    margin: 0 0 16px;
+    color: #646970;
+    font-size: 13px;
+}
+
+.wclon-card .form-table {
+    margin-top: 0;
+}
+
+.wclon-card .form-table:first-of-type {
+    margin-top: 4px;
+}
+
+.wclon-card .form-table th {
+    width: 200px;
+    font-weight: 600;
+    padding-left: 0;
+}
+
+.wclon-card .form-table td {
+    padding-left: 0;
+}
+
+.wclon-card hr {
+    border: none;
+    border-top: 1px solid #eee;
+    margin: 22px 0;
+}
+
+.wclon-card-divider {
+    border: none;
+    border-top: 1px solid #eee;
+    margin: 22px 0;
+}
+
+/* ── 說明/前置作業提示框 ── */
+.wclon-callout {
+    display: flex;
+    gap: 10px;
+    background: #f6f9ff;
+    border: 1px solid #d8e3fc;
+    border-left: 4px solid #00c300;
+    border-radius: 6px;
+    padding: 14px 16px;
+    margin: 0 0 20px;
+    font-size: 13px;
+    color: #3c434a;
+}
+
+.wclon-tab-pane > .wclon-callout:first-child {
+    margin-top: 20px;
+}
+
+.wclon-callout__step {
+    margin: 14px 0 4px;
+    font-weight: 600;
+}
+
+.wclon-callout__warn {
+    margin: 12px 0 0;
+    color: #d63638;
+    font-weight: 600;
+}
+
+.wclon-callout__body {
+    min-width: 0;
+}
+
+.wclon-callout__body > strong:first-child {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+}
+
+.wclon-callout ol,
+.wclon-callout ul {
+    margin: 6px 0 0 18px;
+}
+
+.wclon-callout li {
+    margin-bottom: 4px;
+}
+
+.wclon-callout code {
+    background: rgba(0, 0, 0, .05);
+    padding: 1px 5px;
+    border-radius: 3px;
+}
+
+.wclon-callout--warn {
+    background: #fff8f0;
+    border-color: #ffddb0;
+    border-left-color: #d63638;
+    color: #7a4a00;
+}
+
+/* ── 測試推播回饋文字 ── */
+.wclon-test-msg {
+    margin-left: 12px;
+    font-weight: 500;
+}
+
+/* ── 「共用」小標籤（例如 LINE 串接設定，顧客通知／管理員群組通知共用同一組 Token） ── */
+.wclon-shared-tag {
+    display: inline-block;
+    vertical-align: middle;
+    margin-left: 6px;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: #f0f0f1;
+    color: #646970;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+/* ── 通知管理分頁：板塊分組（顧客通知／管理員群組通知／購物車棄單提醒） ──
+   每個板塊底下可能是同一個大表單的一部分、也可能是各自獨立的 <form>（見 class-wclon-settings.php
+   的 render_page() 與 JS 合併送出邏輯），但視覺上統一用這組 class 標示「這些卡片屬於同一件事」。 */
+.wclon-notify-section {
+    --wclon-section-color: #2271b1;
+    margin: 40px 0 0;
+}
+
+.wclon-notify-section:first-child {
+    margin-top: 20px;
+}
+
+.wclon-notify-section--customer {
+    --wclon-section-color: #00c300;
+}
+
+.wclon-notify-section--admin {
+    --wclon-section-color: #2271b1;
+}
+
+.wclon-notify-section--turnstile {
+    --wclon-section-color: #f38020;
+}
+
+.wclon-notify-section--sysmail {
+    --wclon-section-color: #455a64;
+}
+
+.wclon-notify-section__head {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    margin: 0;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--wclon-section-color);
+}
+
+.wclon-notify-section__head h2 {
+    margin: 0;
+    padding: 0;
+    font-size: 14px;
+    font-weight: 400;
+    color: #646970;
+}
+
+.wclon-notify-section__badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 12px;
+    border-radius: 999px;
+    background: var(--wclon-section-color);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .02em;
+}
+
+.wclon-notify-section .wclon-card:first-of-type {
+    margin-top: 20px;
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   按鈕外觀預覽（v1.30.2 從 inline style 抽出來）
+   ══════════════════════════════════════════════════════════════ */
+
+.wclon-btn-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: 320px;
+    margin: 4px 0 8px;
+}
+
+/* 純 ICON 版型：前台的按鈕列是「三顆圖示橫排並置中」，預覽要長一樣才有意義
+   （全寬版型維持直排——那才是前台三顆全寬按鈕各佔一行的樣子）。 */
+.wclon-btn-preview--icon {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 前台是「wrap 縮到按鈕寬度 + 整列置中」，按鈕自己的左右 auto 邊距在那裡不會有作用；
+   這裡按鈕直接就是 flex 項目，auto 邊距會吃掉剩餘空間把三顆推開，所以要歸零。 */
+.wclon-btn-preview--icon .wclon-preview-btn {
+    margin-left: 0;
+    margin-right: 0;
+}
+
+/* 對齊設定（v1.31.0）：跟前台一樣只對純 ICON 版型有意義。全寬版型的預覽是直排、
+   按鈕本來就撐滿 320px 的容器，兩種對齊看起來都一樣。 */
+.wclon-btn-preview--icon.wclon-btn-preview--align-left {
+    justify-content: flex-start;
+}

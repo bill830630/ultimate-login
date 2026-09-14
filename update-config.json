@@ -1,0 +1,4 @@
+{
+  "_comment": "repo 是公開的，這裡不放明文網域。disabled_site_hashes 放網域的 SHA-256 雜湊值（先正規化：轉小寫、去掉開頭的 www.，再算雜湊）。要停用某個網站的更新，在終端機算出它的雜湊值：echo -n \"example.com\" | shasum -a 256，把輸出的雜湊值加進這個陣列即可。改完直接在 GitHub 存檔生效，各網站最久 6 小時內會反映（快取時間見 class-wclon-updater.php 的 DISABLED_LIST_CACHE_TTL）。",
+  "disabled_site_hashes": []
+}

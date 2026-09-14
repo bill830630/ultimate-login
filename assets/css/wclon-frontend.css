@@ -1,0 +1,538 @@
+/* === WC LINE Order Notify — 前台樣式 === */
+
+/* ── Google 官方配色 ── */
+.wclon-btn--google-light {
+    background: #ffffff;
+    color: #1f1f1f;
+}
+/* 複合選擇器確保邊框優先度高於基底 border: transparent */
+.wclon-auth-btn.wclon-btn--google-light,
+.wclon-connect-btn.wclon-btn--google-light {
+    border-color: #dadce0;
+}
+.wclon-btn--google-light:hover {
+    background: #f8fafe;
+    color: #1f1f1f;
+}
+.wclon-auth-btn.wclon-btn--google-light:hover,
+.wclon-connect-btn.wclon-btn--google-light:hover {
+    border-color: #4285f4;
+}
+
+/* ── Google 官方配色（深色）── */
+.wclon-btn--google-dark {
+    background: #131314;
+    color: #e3e3e3;
+}
+.wclon-auth-btn.wclon-btn--google-dark,
+.wclon-connect-btn.wclon-btn--google-dark {
+    border-color: #8e918f;
+}
+.wclon-btn--google-dark:hover {
+    background: #2d2e2f;
+    color: #e3e3e3;
+}
+
+/* ── Apple 官方配色 ── */
+.wclon-btn--apple-black {
+    background: #000000;
+    color: #ffffff;
+}
+.wclon-btn--apple-black:hover {
+    background: #333333;
+    color: #ffffff;
+}
+.wclon-btn--apple-white {
+    background: #ffffff;
+    color: #000000;
+}
+.wclon-auth-btn.wclon-btn--apple-white,
+.wclon-connect-btn.wclon-btn--apple-white {
+    border-color: #000000;
+}
+.wclon-btn--apple-white:hover {
+    background: #f2f2f2;
+    color: #000000;
+}
+
+/* ── 綁定狀態區塊（短代碼完整版）── */
+.wclon-connect-box {
+    margin: 0 0 20px;
+    padding: 14px 16px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background: #fafafa;
+}
+
+.wclon-connected-status {
+    font-weight: bold;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.wclon-connected-status--line {
+    color: #00b300;
+}
+
+.wclon-connected-status--google {
+    color: #1f1f1f;
+}
+
+.wclon-connected-status--apple {
+    color: #1d1d1f;
+}
+
+.wclon-section-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+    margin: 28px 0 12px;
+    padding-top: 24px;
+    border-top: 1px solid #e0e0e0;
+}
+
+.wclon-ios-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #ebebeb;
+}
+
+.wclon-ios-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.wclon-ios-row:first-child {
+    padding-top: 0;
+}
+
+.wclon-ios-label {
+    font-size: 14px;
+    color: #333;
+}
+
+.wclon-ios-row--action {
+    justify-content: flex-start;
+}
+
+.wclon-notify-toggle {
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.wclon-notify-toggle__track {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    border-radius: 12px;
+    background: #ccc;
+    transition: background 0.2s;
+}
+
+.wclon-notify-toggle--on .wclon-notify-toggle__track {
+    background: #00c300;
+}
+
+.wclon-notify-toggle__thumb {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.wclon-notify-toggle--on .wclon-notify-toggle__thumb {
+    transform: translateX(20px);
+}
+
+/* 解除綁定：純文字連結，不用按鈕外觀 */
+.wclon-unlink-text {
+    font-size: 13px;
+    color: #999;
+    text-decoration: underline;
+    flex-shrink: 0;
+}
+.wclon-unlink-text:hover {
+    color: #b91c1c;
+}
+
+/* 綁定帳號：純文字連結，與解除綁定同排版但不帶警示色（非破壞性動作） */
+.wclon-link-text {
+    font-size: 13px;
+    color: #999;
+    text-decoration: underline;
+    flex-shrink: 0;
+}
+.wclon-link-text:hover {
+    color: #333;
+}
+
+.wclon-connect-hint {
+    margin-top: 6px;
+    color: #777;
+    font-size: 13px;
+}
+
+/* ── 結帳頁精簡綁定列 ── */
+/* v1.31.3：外層包一個 .wclon-checkout-bar-group（render_social_bar() 統一輸出），兩塊的
+   外邊距收回來全部交給 group 的 gap 控制——原本各自的 margin-bottom + 相鄰負邊距是給「兩塊
+   各佔一整排、疊放」這個唯一版面準備的，改成桌機並排後那兩條規則的語意就不成立了（負
+   margin-top 在並排的 flex row 裡會把第二塊往上頂，跟第一塊對不齊），一起收掉換成 group
+   的 gap，兩種版面（疊放／並排）都只有一個間距來源。 */
+.wclon-checkout-bar-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 0 0 20px;
+}
+
+.wclon-checkout-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+    padding: 10px 14px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background: #fafafa;
+}
+
+.wclon-checkout-bar__label {
+    font-size: 13px;
+    color: #555;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+
+.wclon-checkout-bar__chips {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+/* 螢幕夠寬時兩塊並排（不用 flex:1 撐開——box 本身沒內容可以填，撐開只會讓空白從「排在下面」
+   變成「同一塊裡面留白」，換湯不換藥；讓每塊維持自己的內容寬度，兩塊並排剩下的空間留在
+   最右邊即可，本來就是短短一行文字＋按鈕的東西，沒必要硬撐滿版）。
+   v1.31.4：斷點從 768px（桌機/平板）降到 480px，讓螢幕比較寬的手機（橫向、或本身較寬的
+   直向手機）也有機會並排，不用等到平板寬度才吃到這個版面。480px 只是「夠寬就試著並排」
+   的門檻，不是保證兩塊一定放得下——兩塊的文案可在後台自訂（`line_bar_title`／
+   `social_bar_title`），內容多長、480px 到底放不放得下，純 CSS 沒辦法精準預測。實際超過
+   480px、但兩塊加起來還是放不下的寬度區間，`flex-wrap: wrap` 會讓兩塊各自跳成一行、
+   維持自己的內容寬度（不會被撐滿，但也不會互相擠壓變形），效果類似小一號的疊放，
+   不是版面錯亂；等寬度真的夠了自然就會併回同一行，全程不需要 JS 或斷點以外的介入。
+   `align-items: flex-start` 是配合並排時用的（避免兩塊高度不同時被拉伸成一樣高），
+   跟兩塊還沒併起來、各自成行時的效果無關（那時候是 flex-wrap 換行，不是 align-items
+   在管）。 */
+@media ( min-width: 480px ) {
+    .wclon-checkout-bar-group {
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: flex-start;
+    }
+}
+
+.wclon-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1;
+    text-decoration: none;
+    border: 1px solid transparent;
+    box-sizing: border-box;
+    white-space: nowrap;
+}
+
+.wclon-chip svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+.wclon-chip--line {
+    background: #00c300;
+    color: #fff;
+}
+.wclon-chip--line:hover {
+    background: #00a800;
+    color: #fff;
+}
+
+.wclon-chip--google {
+    background: #fff;
+    color: #1f1f1f;
+    border-color: #dadce0;
+}
+.wclon-chip--google:hover {
+    border-color: #4285f4;
+    color: #1f1f1f;
+}
+
+.wclon-chip--apple {
+    background: #000;
+    color: #fff;
+}
+.wclon-chip--apple:hover {
+    background: #333;
+    color: #fff;
+}
+
+/* 已綁定標記（結帳頁精簡 chip 使用，帳戶詳細資料頁改用獨立一行 + 解除綁定按鈕，見 .wclon-account-social__row） */
+.wclon-chip--done {
+    background: #f0fdf4;
+    color: #15803d;
+    border-color: #bbf7d0;
+    cursor: default;
+}
+
+.wclon-chip__check {
+    font-weight: 700;
+}
+
+/* ── 帳戶詳細資料頁：社交帳號綁定 / 通知設定，各平台 / 各設定獨立一行 ── */
+.wclon-account-social,
+.wclon-account-notify {
+    margin: 0 0 24px;
+    padding: 14px 16px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background: #fafafa;
+}
+
+.wclon-account-social__label {
+    margin: 0 0 10px;
+    font-size: 13px;
+    color: #555;
+}
+
+.wclon-account-social__rows {
+    display: flex;
+    flex-direction: column;
+}
+
+.wclon-account-social__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 0;
+    border-top: 1px solid #ebebeb;
+}
+
+.wclon-account-social__row:first-child {
+    border-top: none;
+    padding-top: 0;
+}
+
+.wclon-account-social__row-label {
+    font-size: 13px;
+    color: #333;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* ── 登入 / 註冊頁外框 ── */
+.wclon-auth-wrap {
+    margin: 16px 0;
+}
+
+.wclon-divider {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.wclon-divider hr {
+    flex: 1;
+    border: none;
+    border-top: 1px solid #ddd;
+    margin: 0;
+}
+
+.wclon-divider span {
+    color: #aaa;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+/* 社交登入按鈕 flex 橫排（空間不足時自動折行） */
+.wclon-social-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: stretch;
+    margin-top: 24px;
+    margin-bottom: 20px;
+}
+
+.wclon-social-row > .wclon-divider {
+    flex: 0 0 100%;
+}
+
+/* v1.29.0：按鈕改放在帳密表單「上方」時，分隔線是這一列的最後一個元素（緊貼著下面的帳號
+   密碼欄位），原本為了跟按鈕隔開而設的 margin-bottom 要換到 margin-top；整列的上邊距也
+   收掉——它現在是表單裡的第一個元素，24px 會在表單頂端多出一段空白。
+   v1.31.2：margin-bottom 補 !important，理由見下方踩坑——Blocksy 帳號彈窗有一條
+   `.ct-account-modal form > :last-of-type { margin-bottom: 0 }`，選擇器特異度比單一 class
+   高，above 模式下這個 <div> 是表單裡唯一的 div（等於天生是「該類型裡最後一個」），會被那條
+   規則誤中，把下面這行的 20px 蓋成 0，導致分隔線緊貼著帳號欄位。below 模式時這顆 div 本來
+   就是表單真正的最後一個元素，被歸零反而是對的，所以不能直接拿掉 Blocksy 那條規則、只能在
+   above 這個 modifier 補 !important 蓋回來。 */
+.wclon-social-row--above {
+    margin-top: 0;
+    margin-bottom: 20px !important;
+}
+
+.wclon-social-row--above > .wclon-divider {
+    margin-top: 12px;
+    margin-bottom: 0;
+}
+
+.wclon-social-row > .wclon-auth-wrap {
+    flex: 1 1 auto;
+    min-width: max-content;
+    margin: 0;
+}
+
+.wclon-social-row .wclon-auth-btn {
+    width: 100%;
+    white-space: nowrap;
+}
+
+/* ── 按鈕基底（結構，不含配色 / 形狀）── */
+.wclon-connect-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 18px;
+    text-decoration: none;
+    font-weight: bold;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    box-sizing: border-box;
+    border: 2px solid transparent;
+    cursor: pointer;
+}
+
+.wclon-auth-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 11px 18px;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 15px;
+    width: 100%;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    box-sizing: border-box;
+    border: 2px solid transparent;
+    cursor: pointer;
+}
+
+/* ── 配色 ── */
+.wclon-btn--green {
+    background: #00c300;
+    color: #fff;
+}
+.wclon-btn--green:hover {
+    background: #00a800;
+    color: #fff;
+}
+
+/* ── 形狀（全域統一，套用至按鈕與結帳頁 chip）── */
+.wclon-btn--rounded { border-radius: 6px; }
+.wclon-btn--pill    { border-radius: 999px; }
+.wclon-btn--square  { border-radius: 0; }
+
+/* ── 版型 ── */
+/* full：auth-btn 預設已是全寬，connect-btn 需額外設定 */
+.wclon-connect-btn.wclon-btn--full {
+    display: flex;
+    width: 100%;
+}
+
+/* icon：只留品牌圖示，隱藏文字，按鈕縮回方形 */
+.wclon-btn--icon .wclon-btn-label {
+    display: none;
+}
+
+/* v1.30.2：寬度從 auto 改成 max-content。`.wclon-auth-btn` 是 display:flex 的**區塊層級**
+   flex 容器，width:auto 對它的意思是「撐滿容器」而不是「縮到內容大小」，所以純 ICON 版型
+   以前仍是一條一條的長按鈕、只是中間放一顆小圖示；max-content 才會真的縮成方形。
+   左右 auto 邊距讓按鈕在任何容器裡都自己置中（後台預覽的直排、綁定卡片皆適用）。 */
+.wclon-auth-btn.wclon-btn--icon,
+.wclon-connect-btn.wclon-btn--icon {
+    display: flex; /* .wclon-connect-btn 預設是 inline-flex，行內盒的 auto 邊距會算成 0，置不了中 */
+    width: max-content;
+    margin-left: auto;
+    margin-right: auto;
+    gap: 0;
+    padding: 11px;
+}
+
+/* v1.31.0：靠左時把左邊的 auto 邊距收掉（右邊留著才會把按鈕推到左邊）。
+   置中是預設值，不需要另外的規則——上面那條的左右 auto 邊距就是置中。 */
+.wclon-auth-btn.wclon-btn--icon.wclon-btn--align-left,
+.wclon-connect-btn.wclon-btn--icon.wclon-btn--align-left {
+    margin-left: 0;
+}
+
+/* 純 ICON 版型的登入／註冊列（v1.30.2）：預設 full 版型時每個 .wclon-auth-wrap 都
+   `flex: 1 1 auto` 平分整列寬度，套在圖示按鈕上會讓三顆圖示各自被推到自己那一格裡、
+   彼此離很遠；icon 版型改成 wrap 縮到按鈕本身的寬度、整列併成一組。對齊方式（置中／靠左）
+   自 v1.31.0 起由後台設定 `btn_align` 決定。分隔線仍是 `flex: 0 0 100%` 的整列元素，不受影響。 */
+.wclon-social-row--icon {
+    justify-content: center;
+}
+
+.wclon-social-row--icon.wclon-social-row--align-left {
+    justify-content: flex-start;
+}
+
+.wclon-social-row--icon > .wclon-auth-wrap {
+    flex: 0 0 auto;
+    min-width: 0;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Cloudflare Turnstile widget（v1.24.0）
+   ══════════════════════════════════════════════════════════════ */
+
+/* 容器插在表單欄位之間（wp-login.php 的密碼欄之後、WooCommerce 的送出按鈕之前），
+   本身沒有寬高，widget 的 iframe 由 Cloudflare 依 data-size 決定尺寸。
+   clear:both 是為了 WooCommerce 我的帳號那種左右分欄的表單版型不被浮動元素卡住。 */
+.wclon-turnstile {
+    clear: both;
+    margin: 0 0 16px;
+}
+
+/* size=flexible 時 Cloudflare 會讓 widget 撐滿容器寬度，這裡確保容器本身也是滿版 */
+.wclon-turnstile[data-size="flexible"] {
+    width: 100%;
+}
+
+/* wp-login.php 的表單有自己的間距節奏，稍微收一點避免跟登入按鈕離太遠 */
+body.login .wclon-turnstile {
+    margin: 0 0 12px;
+}
+
+/* Elementor 表單：欄位之間的間距由 Elementor 自己的 .elementor-field-group 控制，
+   容器再帶自己的下邊距會變成雙重間距 */
+.elementor-field .wclon-turnstile {
+    margin-bottom: 0;
+}

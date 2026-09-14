@@ -1,0 +1,7 @@
+.DS_Store
+node_modules/
+
+# repo 是公開的（v1.33.0 起）：這些是內部開發用檔案，不進 git，只留在本機硬碟
+CLAUDE.md
+release.sh
+add-github-token.sh
