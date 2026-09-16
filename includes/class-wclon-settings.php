@@ -867,6 +867,13 @@ class WCLON_Settings {
 								</td>
 							</tr>
 							<tr>
+								<th scope="row"><label for="wclon_bind_coupon_header_color">推播標題色</label></th>
+								<td>
+									<input type="text" id="wclon_bind_coupon_header_color" class="wclon-color-field" data-wclon-color-mirror="wclon_header_color" value="<?php echo esc_attr( $header_color ); ?>" data-default-color="#00C300">
+									<p class="description">與「顧客通知」分頁「Flex Message 樣式」卡片的「訂單狀態通知標題色」是同一個設定，這裡只是方便在「訂單通知」模組關閉、切不到該分頁時仍可調整。</p>
+								</td>
+							</tr>
+							<tr>
 								<th scope="row"><label for="wclon_bind_coupon_title">推播標題</label></th>
 								<td><input type="text" id="wclon_bind_coupon_title" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[bind_coupon_title]" value="<?php echo esc_attr( $bind_coupon_title ); ?>" class="regular-text" placeholder="🎁 專屬優惠券"></td>
 							</tr>
@@ -1356,6 +1363,26 @@ class WCLON_Settings {
 					$(el).wpColorPicker({
 						change: notify,
 						clear: notify
+					});
+				});
+
+				// 「綁定歡迎優惠券」卡片的「推播標題色」是純 UI 鏡射欄位（沒有 name，
+				// 不會被送出）：真正送出的值一律來自「顧客通知」分頁的 wclon_header_color；
+				// 「訂單通知」模組關閉時該分頁的 nav-tab 連結不會輸出、切不過去，這個鏡射欄位
+				// 讓管理員仍能在 LINE 分頁改到同一個值。改這裡就同步寫回目標欄位（含更新
+				// wp-color-picker 本身的狀態，不只是底層 input 的 value），改「顧客通知」分頁
+				// 那顆則不會回頭同步（該分頁可見時代表模組是開的，直接在那裡改就好）。
+				$('.wclon-color-field[data-wclon-color-mirror]').each(function () {
+					var mirrorEl = this;
+					var targetEl = document.getElementById(mirrorEl.getAttribute('data-wclon-color-mirror'));
+					if (!targetEl) return;
+					mirrorEl.addEventListener('input', function () {
+						if (targetEl.value === mirrorEl.value) return;
+						// targetEl 也是 .wclon-color-field，上面的 .each() 已經在同一個 tick
+						// 裡先跑過、初始化成 wp-color-picker 了，這裡直接呼叫它的 API 更新色票
+						// 本身的狀態，不能只改底層 input 的 value（wp-color-picker 不會自己偵測到）。
+						$(targetEl).wpColorPicker('color', mirrorEl.value);
+						targetEl.dispatchEvent(new Event('input', { bubbles: true }));
 					});
 				});
 			});
