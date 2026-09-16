@@ -39,6 +39,10 @@ class WCLON_Settings {
 		}
 		wp_enqueue_style( 'wclon-frontend', WCLON_PLUGIN_URL . 'assets/css/wclon-frontend.css', array(), WCLON_VERSION );
 		wp_enqueue_style( 'wclon-admin', WCLON_PLUGIN_URL . 'assets/css/wclon-admin.css', array(), WCLON_VERSION );
+		// WordPress 內建色票選擇器（Iris），供 Flex Message 標題色欄位使用：比原生 <input type="color">
+		// 多一個可直接輸入/貼上色號的文字欄位，不用額外引入第三方函式庫或自己刻一個。
+		wp_enqueue_style( 'wp-color-picker' );
+		wp_enqueue_script( 'wp-color-picker' );
 	}
 
 	public static function flush_cache() {
@@ -374,33 +378,6 @@ class WCLON_Settings {
 	}
 
 	/**
-	 * 讀取目前佈景主題透過 `editor-color-palette` 宣告的色票（標準 WordPress 機制，多數主題含 Blocksy 都有支援），
-	 * 供 Flex Message 標題色的色票快選使用。Blocksy 等主題的色值是 `var(--xxx, #hex)` 格式（CSS 變數 + fallback），
-	 * LINE API 只吃得下純 hex，因此這裡只取 fallback 部分；解析不出合法 hex 的項目直接跳過。
-	 */
-	public static function get_theme_color_palette() {
-		$support = get_theme_support( 'editor-color-palette' );
-		if ( empty( $support[0] ) || ! is_array( $support[0] ) ) {
-			return array();
-		}
-		$palette = array();
-		foreach ( $support[0] as $entry ) {
-			$color = $entry['color'] ?? '';
-			if ( preg_match( '/#[0-9a-fA-F]{3,8}/', $color, $m ) ) {
-				$color = $m[0];
-			}
-			if ( ! preg_match( '/^#[0-9a-fA-F]{3,8}$/', $color ) ) {
-				continue;
-			}
-			$palette[] = array(
-				'name'  => $entry['name'] ?? $color,
-				'color' => $color,
-			);
-		}
-		return $palette;
-	}
-
-	/**
 	 * v1.24.0 起改為**頂層選單**（原本掛在 WooCommerce 底下的子選單）。
 	 *
 	 * 頁面 slug（`wclon-settings`）與網址（`admin.php?page=wclon-settings`）都沒有變動，
@@ -528,25 +505,6 @@ class WCLON_Settings {
 		}
 	}
 
-	/**
-	 * 在色票輸入框旁輸出目前佈景主題色票的快選按鈕，點擊即把該色填入對應的 <input type="color">
-	 */
-	private static function render_theme_palette_picker( array $palette, $target_input_id ) {
-		if ( empty( $palette ) ) {
-			return;
-		}
-		?>
-		<div class="wclon-theme-palette" data-target="<?php echo esc_attr( $target_input_id ); ?>" style="display:inline-flex;align-items:center;gap:4px;margin-left:10px;vertical-align:middle;">
-			<span style="color:#72777c;font-size:12px;">主題配色：</span>
-			<?php foreach ( $palette as $swatch ) : ?>
-				<button type="button" class="wclon-theme-swatch" data-color="<?php echo esc_attr( $swatch['color'] ); ?>"
-					title="<?php echo esc_attr( $swatch['name'] . '（' . $swatch['color'] . '）' ); ?>"
-					style="width:20px;height:20px;border-radius:50%;border:1px solid rgba(0,0,0,.15);padding:0;cursor:pointer;background-color:<?php echo esc_attr( $swatch['color'] ); ?>;"></button>
-			<?php endforeach; ?>
-		</div>
-		<?php
-	}
-
 	// ─── 設定頁渲染 ─────────────────────────────────────────────────────────
 
 	public static function render_page() {
@@ -556,7 +514,6 @@ class WCLON_Settings {
 		$google_callback_url = home_url( '/?wclon_action=google_callback' );
 		$header_color        = self::get( 'header_color', '#00C300' );
 		$note_color          = self::get( 'note_color', '#FF9800' );
-		$theme_palette       = self::get_theme_color_palette();
 		$button_text         = self::get( 'button_text', '查看訂單詳情' );
 		$greeting_template   = self::get( 'greeting_template', '您好，{customer_name}！' );
 		$note_title          = self::get( 'note_title', '店家留言' );
@@ -571,6 +528,7 @@ class WCLON_Settings {
 		$btn_position        = self::get_btn_position();
 		$btn_align           = self::get_align();
 		$my_line_id          = (string) get_user_meta( get_current_user_id(), WCLON_Line_Login::USER_META_KEY, true );
+		$site_name           = get_bloginfo( 'name' );
 
 		$coupon_enabled   = self::get( 'line_bind_coupon_enabled' );
 		$coupon_type      = self::get( 'line_bind_coupon_type', 'fixed_cart' );
@@ -767,7 +725,9 @@ class WCLON_Settings {
 
 					<div class="wclon-card">
 						<h2 class="wclon-card__title">綁定歡迎優惠券</h2>
-						<p class="wclon-card__desc">顧客的會員帳號第一次成功綁定 LINE 時（不論是在「帳號綁定」頁手動綁定，或透過 LINE 登入/註冊/結帳自動建立並綁定帳號），自動建立一張限定該會員使用一次的優惠券，並用 LINE 推播給顧客。同一帳號解除綁定後重新綁定不會重複發送。<strong>必須已加官方帳號好友才會發放</strong>：綁定當下若偵測到尚未加好友，優惠券不會發放；顧客之後透過官方帳號 Webhook 加好友時會自動補發，不需要重新綁定或重新操作（需要「管理員通知」分頁的 Webhook 已正確設定並開啟「Use webhook」，否則加好友後不會觸發補發）。</p>
+						<p class="wclon-card__desc">顧客帳號第一次成功綁定 LINE 時，自動發送一張限定本人使用一次的優惠券。<strong>需已加官方帳號好友才會發放</strong>：尚未加好友時會先暫緩，等顧客之後加好友再自動補發（需先在「管理員通知」分頁設定好 Webhook）。</p>
+						<div class="wclon-flex-card-layout">
+						<div class="wclon-flex-card-layout__fields">
 						<table class="form-table">
 							<tr>
 								<th scope="row">啟用</th>
@@ -825,6 +785,12 @@ class WCLON_Settings {
 								<td><input type="text" id="wclon_bind_coupon_button_text" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[bind_coupon_button_text]" value="<?php echo esc_attr( $bind_coupon_button_text ); ?>" class="regular-text" placeholder="前往購物"></td>
 							</tr>
 						</table>
+						</div>
+						<div class="wclon-flex-card-layout__preview">
+							<p class="description" style="margin:0 0 12px;">選項變更時即時更新；實際樣式以 LINE App 顯示為準。</p>
+							<div id="wclon_flex_preview_coupon" class="wclon-flex-preview"></div>
+						</div>
+						</div>
 					</div>
 				</div><!-- /wclon-tab-line -->
 
@@ -1004,20 +970,20 @@ class WCLON_Settings {
 
 					<div class="wclon-card">
 						<h2 class="wclon-card__title">Flex Message 樣式</h2>
+						<div class="wclon-flex-card-layout">
+						<div class="wclon-flex-card-layout__fields">
 						<table class="form-table">
 							<tr>
 								<th scope="row"><label for="wclon_header_color">訂單狀態通知標題色</label></th>
 								<td>
-									<input type="color" id="wclon_header_color" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[header_color]" value="<?php echo esc_attr( $header_color ); ?>">
-									<?php self::render_theme_palette_picker( $theme_palette, 'wclon_header_color' ); ?>
+									<input type="text" id="wclon_header_color" class="wclon-color-field" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[header_color]" value="<?php echo esc_attr( $header_color ); ?>" data-default-color="#00C300">
 									<p class="description">預設會依訂單狀態自動套用顏色（處理中綠色、完成藍色、取消灰色⋯），設定後固定使用此色。</p>
 								</td>
 							</tr>
 							<tr>
 								<th scope="row"><label for="wclon_note_color">備注通知標題色</label></th>
 								<td>
-									<input type="color" id="wclon_note_color" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[note_color]" value="<?php echo esc_attr( $note_color ); ?>">
-									<?php self::render_theme_palette_picker( $theme_palette, 'wclon_note_color' ); ?>
+									<input type="text" id="wclon_note_color" class="wclon-color-field" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[note_color]" value="<?php echo esc_attr( $note_color ); ?>" data-default-color="#FF9800">
 									<p class="description">預設橘色（#FF9800）。</p>
 								</td>
 							</tr>
@@ -1047,6 +1013,18 @@ class WCLON_Settings {
 								</td>
 							</tr>
 						</table>
+						</div>
+						<div class="wclon-flex-card-layout__preview">
+							<p style="margin:0 0 8px;"><label for="wclon_flex_preview_type" style="font-weight:600;">預覽訊息類型</label></p>
+							<select id="wclon_flex_preview_type">
+								<option value="status">訂單狀態通知</option>
+								<option value="note">備注通知</option>
+								<option value="logistics">物流狀態通知</option>
+							</select>
+							<p class="description" style="max-width:260px;margin:8px 0 12px;">選項變更時即時更新；實際樣式以 LINE App 顯示為準。</p>
+							<div id="wclon_flex_preview_customer" class="wclon-flex-preview"></div>
+						</div>
+						</div>
 					</div>
 
 					<div class="wclon-card">
@@ -1253,19 +1231,190 @@ class WCLON_Settings {
 				}
 			}());
 
-			// ── 主題配色快選 ──
-			(function () {
-				document.querySelectorAll('.wclon-theme-swatch').forEach(function (swatch) {
-					swatch.addEventListener('click', function () {
-						var wrapper = this.closest('.wclon-theme-palette');
-						var input   = document.getElementById(wrapper.dataset.target);
-						if (input) {
-							input.value = this.dataset.color;
-							input.dispatchEvent(new Event('input'));
-							input.dispatchEvent(new Event('change'));
-						}
+			// ── Flex Message 標題色：WordPress 內建色票選擇器（可直接輸入色號） ──
+			// 用 jQuery(document).ready 延後執行：wp-color-picker 依賴的 iris／jquery-ui 系列 script
+			// 大多掛在 footer 輸出，若跟其餘設定頁 JS 一樣立即執行，執行當下這些函式庫可能還沒載入。
+			jQuery(function ($) {
+				if ( ! $.fn.wpColorPicker ) {
+					return;
+				}
+				// 用 .each() 各自用閉包記住自己的 <input>，不依賴 change／clear 回呼裡 this／
+				// event.target 實際指向哪個元素（wp-color-picker 兩個回呼的綁定對象並不一致）。
+				$('.wclon-color-field').each(function () {
+					var el = this;
+					function notify() {
+						setTimeout(function () {
+							el.dispatchEvent(new Event('input', { bubbles: true }));
+						}, 0);
+					}
+					$(el).wpColorPicker({
+						change: notify,
+						clear: notify
 					});
 				});
+			});
+
+			// ── Flex Message 樣式即時預覽 ──
+			(function () {
+				var siteName = '<?php echo esc_js( $site_name ); ?>';
+				var DUMMY = {
+					orderNumber: '#TEST-001',
+					status: '處理中',
+					total: 'NT$1,200',
+					payment: '信用卡',
+					items: [['範例商品 A', '×2'], ['範例商品 B', '×1']],
+					customerName: '顧客',
+					noteText: '您好，商品已確認出貨，感謝您的訂購！',
+					logisticsText: '貨物已送達，感謝您的購買！',
+					couponCode: 'WELCOME100',
+					couponExpiry: '2026-12-31 前有效'
+				};
+
+				function esc(str) {
+					var div = document.createElement('div');
+					div.textContent = (str === null || str === undefined) ? '' : String(str);
+					return div.innerHTML;
+				}
+
+				function renderTemplate(tpl, vars) {
+					return String(tpl || '').replace(/\{([a-z_]+)\}/gi, function (match, key) {
+						return Object.prototype.hasOwnProperty.call(vars, key) ? vars[key] : match;
+					});
+				}
+
+				function val(id, fallback) {
+					var el = document.getElementById(id);
+					if (!el || '' === el.value) return fallback || '';
+					return el.value;
+				}
+
+				function couponAmountText() {
+					var type   = val('wclon_coupon_type', 'fixed_cart');
+					var amount = parseFloat(val('wclon_coupon_amount', '100')) || 0;
+					if ('percent' === type) {
+						return amount.toFixed(2).replace(/0+$/, '').replace(/\.$/, '') + '%';
+					}
+					return 'NT$' + amount.toLocaleString('en-US');
+				}
+
+				function row(label, value, valueColor) {
+					return '<div class="wclon-flex-preview__row">' +
+						'<span class="wclon-flex-preview__row-label">' + esc(label) + '</span>' +
+						'<span class="wclon-flex-preview__row-value"' + (valueColor ? ' style="color:' + esc(valueColor) + ';"' : '') + '>' + esc(value) + '</span>' +
+						'</div>';
+				}
+
+				function bubbleHtml(color, headerTitle, bodyHtml, btnText) {
+					return '<div class="wclon-flex-preview__header" style="background-color:' + esc(color) + ';">' +
+						'<span class="wclon-flex-preview__site">' + esc(siteName) + '</span>' +
+						'<span class="wclon-flex-preview__title">' + esc(headerTitle) + '</span>' +
+						'</div>' +
+						'<div class="wclon-flex-preview__body">' + bodyHtml + '</div>' +
+						'<div class="wclon-flex-preview__footer">' +
+						'<span class="wclon-flex-preview__btn" style="background-color:' + esc(color) + ';">' + esc(btnText) + '</span>' +
+						'</div>';
+				}
+
+				function renderCustomerPreview() {
+					var box     = document.getElementById('wclon_flex_preview_customer');
+					var typeSel = document.getElementById('wclon_flex_preview_type');
+					if (!box || !typeSel) return;
+
+					var type       = typeSel.value;
+					var buttonText = val('wclon_button_text', '查看訂單詳情');
+					var greeting   = renderTemplate(val('wclon_greeting_template', '您好，{customer_name}！'), {
+						customer_name: DUMMY.customerName,
+						site_name: siteName
+					});
+					var color, title, bodyHtml;
+
+					if ('note' === type) {
+						color    = val('wclon_note_color', '#FF9800');
+						title    = val('wclon_note_title', '店家留言');
+						bodyHtml = '<div class="wclon-flex-preview__greeting">' + esc(greeting) + '</div>' +
+							'<hr class="wclon-flex-preview__sep">' +
+							row('訂單編號', DUMMY.orderNumber) +
+							'<hr class="wclon-flex-preview__sep">' +
+							'<div class="wclon-flex-preview__section-label">' + esc(title) + '</div>' +
+							'<div class="wclon-flex-preview__text">' + esc(DUMMY.noteText) + '</div>';
+					} else if ('logistics' === type) {
+						color    = val('wclon_header_color', '#00C300');
+						title    = val('wclon_logistics_title', '🚚 物流狀態更新');
+						bodyHtml = '<div class="wclon-flex-preview__greeting">' + esc(greeting) + '</div>' +
+							'<hr class="wclon-flex-preview__sep">' +
+							row('訂單編號', DUMMY.orderNumber) +
+							'<hr class="wclon-flex-preview__sep">' +
+							'<div class="wclon-flex-preview__section-label">' + esc(title) + '</div>' +
+							'<div class="wclon-flex-preview__text">' + esc(DUMMY.logisticsText) + '</div>';
+					} else {
+						color = val('wclon_header_color', '#00C300');
+						title = DUMMY.status;
+						var itemRows = DUMMY.items.map(function (item) {
+							return row('・' + item[0], item[1]);
+						}).join('');
+						bodyHtml = '<div class="wclon-flex-preview__greeting">' + esc(greeting) + '</div>' +
+							'<hr class="wclon-flex-preview__sep">' +
+							row('訂單編號', DUMMY.orderNumber) +
+							row('訂單狀態', DUMMY.status, color) +
+							row('訂單金額', DUMMY.total) +
+							row('付款方式', DUMMY.payment) +
+							'<hr class="wclon-flex-preview__sep">' +
+							'<div class="wclon-flex-preview__section-label">購買商品</div>' +
+							itemRows;
+					}
+
+					box.innerHTML = bubbleHtml(color, title, bodyHtml, buttonText);
+				}
+
+				function renderCouponPreview() {
+					var box = document.getElementById('wclon_flex_preview_coupon');
+					if (!box) return;
+
+					var color   = val('wclon_header_color', '#00C300');
+					var title   = val('wclon_bind_coupon_title', '🎁 專屬優惠券');
+					var btnText = val('wclon_bind_coupon_button_text', '前往購物');
+					var vars    = {
+						site_name: siteName,
+						coupon_code: DUMMY.couponCode,
+						coupon_amount: couponAmountText()
+					};
+					var greeting    = renderTemplate(val('wclon_bind_coupon_greeting', '感謝您綁定 LINE 帳號！'), vars);
+					var description = renderTemplate(val('wclon_bind_coupon_desc', '結帳時輸入上方代碼即可折抵，僅限本人帳號使用一次。'), vars);
+
+					var bodyHtml = '<div class="wclon-flex-preview__greeting">' + esc(greeting) + '</div>' +
+						'<hr class="wclon-flex-preview__sep">' +
+						row('優惠券代碼', DUMMY.couponCode) +
+						row('折扣內容', vars.coupon_amount) +
+						row('使用效期', DUMMY.couponExpiry) +
+						'<div class="wclon-flex-preview__desc">' + esc(description) + '</div>';
+
+					box.innerHTML = bubbleHtml(color, title, bodyHtml, btnText);
+				}
+
+				var customerFieldIds = ['wclon_header_color', 'wclon_note_color', 'wclon_button_text', 'wclon_greeting_template', 'wclon_note_title', 'wclon_logistics_title'];
+				var couponFieldIds   = ['wclon_header_color', 'wclon_bind_coupon_title', 'wclon_bind_coupon_greeting', 'wclon_bind_coupon_desc', 'wclon_bind_coupon_button_text', 'wclon_coupon_type', 'wclon_coupon_amount'];
+
+				var typeSel = document.getElementById('wclon_flex_preview_type');
+				if (typeSel) {
+					typeSel.addEventListener('change', renderCustomerPreview);
+				}
+
+				customerFieldIds.forEach(function (id) {
+					var el = document.getElementById(id);
+					if (!el) return;
+					el.addEventListener('input', renderCustomerPreview);
+					el.addEventListener('change', renderCustomerPreview);
+				});
+
+				couponFieldIds.forEach(function (id) {
+					var el = document.getElementById(id);
+					if (!el) return;
+					el.addEventListener('input', renderCouponPreview);
+					el.addEventListener('change', renderCouponPreview);
+				});
+
+				renderCustomerPreview();
+				renderCouponPreview();
 			}());
 
 			// ── 測試推播 ──

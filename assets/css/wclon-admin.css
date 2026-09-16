@@ -267,3 +267,152 @@
 .wclon-btn-preview--icon.wclon-btn-preview--align-left {
     justify-content: flex-start;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   Flex Message 樣式即時預覽（v1.34.0）
+   ══════════════════════════════════════════════════════════════ */
+
+/* 欄位／預覽左右並排：左邊放原本的 form-table，右邊放預覽卡片，改欄位當下視線不用移動就看得到
+   結果。右欄用 position:sticky 固定在視窗內（欄位表格通常比預覽卡片高很多），捲動看下面的欄位時
+   預覽卡片不會被捲出畫面。782px 是 WP admin 本身的手機版斷點，比照它讓窄螢幕改回上下堆疊、
+   關掉 sticky（欄位表格全寬時卡片黏在頂端反而會擋住內容）。 */
+.wclon-flex-card-layout {
+    display: flex;
+    align-items: flex-start;
+    gap: 24px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+
+.wclon-flex-card-layout__fields {
+    flex: 1 1 320px;
+    min-width: 280px;
+}
+
+.wclon-flex-card-layout__fields .form-table {
+    margin-top: 0;
+}
+
+.wclon-flex-card-layout__preview {
+    flex: 0 0 auto;
+    position: sticky;
+    top: 40px;
+}
+
+@media (max-width: 782px) {
+    .wclon-flex-card-layout__preview {
+        position: static;
+        width: 100%;
+    }
+}
+
+.wclon-flex-preview {
+    width: 280px;
+    max-width: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, .15);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* box-sizing: border-box，否則 .wclon-flex-preview__btn 的 width:100% 只會計入內容寬度，
+   自己的 padding 會另外疊加上去、撐破父層 footer 的右側內距，導致按鈕右邊貼齊卡片邊緣
+   （左邊沒事，因為 footer 的左 padding 決定按鈕起點，右邊才是被撐出去的那一側）。 */
+.wclon-flex-preview,
+.wclon-flex-preview *,
+.wclon-flex-preview *::before,
+.wclon-flex-preview *::after {
+    box-sizing: border-box;
+}
+
+.wclon-flex-preview__header {
+    padding: 16px;
+    color: #fff;
+}
+
+.wclon-flex-preview__site {
+    display: block;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.wclon-flex-preview__title {
+    display: block;
+    margin-top: 6px;
+    font-size: 20px;
+    font-weight: bold;
+    line-height: 1.3;
+    word-break: break-word;
+}
+
+.wclon-flex-preview__body {
+    padding: 20px;
+}
+
+.wclon-flex-preview__greeting {
+    font-size: 13px;
+    font-weight: bold;
+    color: #111;
+    word-break: break-word;
+}
+
+.wclon-flex-preview__sep {
+    border: none;
+    border-top: 1px solid #eee;
+    margin: 12px 0;
+}
+
+.wclon-flex-preview__row {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 12px;
+    margin: 6px 0;
+}
+
+.wclon-flex-preview__row-label {
+    color: #aaa;
+}
+
+.wclon-flex-preview__row-value {
+    color: #111;
+    font-weight: bold;
+    text-align: right;
+}
+
+.wclon-flex-preview__section-label {
+    font-size: 12px;
+    font-weight: bold;
+    color: #555;
+    margin: 12px 0 4px;
+}
+
+.wclon-flex-preview__text {
+    font-size: 12px;
+    color: #111;
+    word-break: break-word;
+}
+
+.wclon-flex-preview__desc {
+    font-size: 11px;
+    color: #888;
+    margin-top: 12px;
+    word-break: break-word;
+}
+
+.wclon-flex-preview__footer {
+    padding: 20px;
+}
+
+.wclon-flex-preview__btn {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    border-radius: 6px;
+    color: #fff;
+    text-align: center;
+    font-size: 13px;
+    font-weight: bold;
+    word-break: break-word;
+}
