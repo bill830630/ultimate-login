@@ -1,4 +1,4 @@
-# 終極登入
+# 終極登入 (Ultimate Login)
 
 WooCommerce 用外掛：LINE / Google / Apple 社交登入，訂單狀態變更時透過 LINE 推播通知顧客，並可推播新訂單通知到管理員 LINE 群組。
 

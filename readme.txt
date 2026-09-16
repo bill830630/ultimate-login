@@ -1,4 +1,4 @@
-# 終極登入
+# 終極登入 (Ultimate Login)
 
 讓顧客透過 LINE 或 Google 登入綁定帳號，並在 WooCommerce 訂單狀態變更時自動透過 LINE 推播通知；同時可推播新訂單通知到管理員/員工共用的 LINE 群組或聊天室。
 
