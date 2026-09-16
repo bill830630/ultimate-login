@@ -201,6 +201,7 @@ class WCAN_Settings {
 
 			<div class="wclon-card">
 				<h2 class="wclon-card__title">啟用與憑證</h2>
+				<p class="wclon-card__desc">新訂單推播給店家/員工共用的 LINE 群組。</p>
 				<table class="form-table">
 					<tr>
 						<th scope="row">啟用管理員群組通知</th>

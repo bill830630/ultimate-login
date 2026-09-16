@@ -11,7 +11,19 @@ class WCLON_Settings {
 
 	const OPTION_KEY = 'wclon_settings';
 
+	/**
+	 * 模組開關 option（v1.36.0 新增，仿效終極電商的模組開關系統）。
+	 *
+	 * 跟 self::OPTION_KEY 刻意分開存成獨立 option：模組開關要在 WCLON_Settings::init()
+	 * 都還沒跑到主表單那些欄位之前就能查詢（main 檔案要用它決定該不該呼叫其他 class 的
+	 * ::init()），放進同一包大 option 會有先有蛋的問題；獨立出來也讓「模組」頁籤可以是自己的
+	 * 獨立 <form>，不會被主表單的 sanitize() 牽連。
+	 */
+	const MODULE_OPTION_KEY = 'wclon_module_settings';
+
 	private static $cache = null;
+
+	private static $module_cache = null;
 
 	/**
 	 * add_menu_page() 回傳的 hook suffix，供 enqueue_admin_assets() 比對用。
@@ -26,11 +38,72 @@ class WCLON_Settings {
 	public static function init() {
 		add_action( 'admin_menu', array( __CLASS__, 'add_menu' ) );
 		add_action( 'admin_init', array( __CLASS__, 'register_settings' ) );
+		add_action( 'admin_init', array( __CLASS__, 'register_module_settings' ) );
 		add_action( 'wp_ajax_wclon_test_push', array( __CLASS__, 'ajax_test_push' ) );
 		// 儲存後清除靜態快取，確保同次請求取得最新值
 		add_action( 'update_option_' . self::OPTION_KEY, array( __CLASS__, 'flush_cache' ) );
+		add_action( 'update_option_' . self::MODULE_OPTION_KEY, array( __CLASS__, 'flush_module_cache' ) );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_admin_assets' ) );
 		add_shortcode( 'wclon_social_bar', array( __CLASS__, 'render_social_bar' ) );
+	}
+
+	// ─── 模組開關（v1.36.0 新增） ───────────────────────────────────────────
+	//
+	// 範圍刻意比照使用者的分法，不是逐頁籤一一對應：LINE／Google／Apple 三個登入 provider
+	// 合併成一個「社交登入」開關（一起開、一起關，三者都是同一件事——讓顧客用社群帳號登入）；
+	// 「顧客通知」（WCLON_Notifier）與「管理員通知」（WCAN_*）合併成一個「訂單通知」開關
+	// （兩者都是「訂單發生變化時推播 LINE」，差別只是推給顧客本人還是店家群組）；「系統信件」
+	// （WCLON_System_Email_Settings）獨立一個開關。Turnstile／更新檢查器／設定頁本身維持
+	// 「基本功能」，不在模組開關的管轄範圍內——Turnstile 已經有自己的 enabled 開關＋金鑰兩把
+	// 都填了才生效的判斷（is_active()），沒有必要疊床架屋再包一層模組開關。
+
+	/**
+	 * 模組定義：key 對應下面存進 wclon_module_settings 的欄位、也對應
+	 * ultimate-login.php 主檔案 plugins_loaded 時判斷要不要呼叫對應 class 的 ::init()。
+	 */
+	public static function get_module_definitions() {
+		return array(
+			'social_login' => array(
+				'label' => '社交登入',
+				'desc'  => 'LINE／Google／Apple 登入、註冊、帳號綁定。關閉後「LINE」「Google」「Apple」頁籤、前台社交登入按鈕、會員中心「帳號綁定」的綁定功能整個不會出現。',
+			),
+			'order_notify' => array(
+				'label' => '訂單通知',
+				'desc'  => '訂單狀態、備注、物流狀態推播給下單顧客本人；新訂單推播給管理員/員工共用的 LINE 群組。關閉後「顧客通知」「管理員通知」頁籤整個不會出現。',
+			),
+			'system_email' => array(
+				'label' => '系統信件',
+				'desc'  => '停用 WordPress 核心與外掛自動更新寄給管理員的通知信。關閉後「系統信件」頁籤整個不會出現。',
+			),
+		);
+	}
+
+	/**
+	 * 沒有存過設定時預設全部啟用——既有站台升級後行為不變，不能比照終極電商後來改成的
+	 * 「預設關閉」（那是給全新安裝的乾淨體驗設計的，對已經在用這些功能的既有站台是功能倒退
+	 * 風險，終極電商自己的 CLAUDE.md 也把這個改動標記為未處理的升級風險）。
+	 */
+	public static function module_enabled( $module ) {
+		if ( null === self::$module_cache ) {
+			self::$module_cache = get_option( self::MODULE_OPTION_KEY, array() );
+		}
+		return ( self::$module_cache[ $module ] ?? '1' ) === '1';
+	}
+
+	public static function flush_module_cache() {
+		self::$module_cache = null;
+	}
+
+	public static function register_module_settings() {
+		register_setting( 'wclon_module_settings_group', self::MODULE_OPTION_KEY, array( __CLASS__, 'sanitize_modules' ) );
+	}
+
+	public static function sanitize_modules( $input ) {
+		$clean = array();
+		foreach ( array_keys( self::get_module_definitions() ) as $module ) {
+			$clean[ $module ] = ! empty( $input[ $module ] ) ? '1' : '0';
+		}
+		return $clean;
 	}
 
 	public static function enqueue_admin_assets( $hook ) {
@@ -543,6 +616,25 @@ class WCLON_Settings {
 		$line_svg   = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="#ffffff" aria-hidden="true"><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.281.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>';
 		$apple_svg  = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>';
 		$google_svg_color = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>';
+
+		// 模組開關：關閉的模組，對應頁籤在下方 nav 與 pane 都不會輸出（見「模組」頁籤與
+		// WCLON_Settings::module_enabled()）。LINE／Google／Apple／顧客通知的 pane 即使頁籤被
+		// 隱藏也**仍然照常渲染**（只是沒有 nav 連結指向、使用者到不了）——因為它們的欄位跟「一般設定」
+		// 同屬一個 <form>／同一個 wclon_settings option，若整段不渲染，儲存「一般設定」時這些欄位
+		// 會從 $_POST 裡消失，sanitize() 會把它們當成使用者清空、寫回空字串，等於靜默清掉已存的
+		// LINE/Google/Apple 憑證。管理員通知／系統信件是各自獨立的 <form>／option，沒有這個風險，
+		// 才整段不渲染。
+		$mod_social  = self::module_enabled( 'social_login' );
+		$mod_notify  = self::module_enabled( 'order_notify' );
+		$mod_sysmail = self::module_enabled( 'system_email' );
+		// 模組開關比照終極電商，僅限 Administrator（manage_options）操作：模組開關會整批啟用/
+		// 停用外掛功能，影響範圍比其餘設定頁（皆為 manage_woocommerce）大，不該讓 Shop Manager
+		// 這類角色碰。「模組」頁籤的表單本身走標準的 register_setting()/options.php（見
+		// register_module_settings()），WordPress 核心的 options.php 預設就要求 manage_options
+		// 才能送出（跟本外掛其餘表單一樣，這是 WP 核心一直都有的行為，不是這次才加的保護）；
+		// 這裡額外控制的是「畫面看不看得到」——沒有 manage_options 的角色乾脆連頁籤都看不到，
+		// 不會出現「點得進去、填了勾選、按下儲存卻被告知權限不足」這種體驗。
+		$can_manage_modules = current_user_can( 'manage_options' );
 		?>
 		<div class="wrap wclon-admin-wrap">
 			<div class="wclon-admin-header">
@@ -554,13 +646,22 @@ class WCLON_Settings {
 
 			<nav class="nav-tab-wrapper">
 				<a href="#" class="nav-tab nav-tab-active" data-wclon-tab="general">一般設定</a>
+				<?php if ( $mod_social ) : ?>
 				<a href="#" class="nav-tab" data-wclon-tab="line">LINE</a>
 				<a href="#" class="nav-tab" data-wclon-tab="google">Google</a>
 				<a href="#" class="nav-tab" data-wclon-tab="apple">Apple</a>
+				<?php endif; ?>
+				<?php if ( $mod_notify ) : ?>
 				<a href="#" class="nav-tab" data-wclon-tab="customer">顧客通知</a>
 				<a href="#" class="nav-tab" data-wclon-tab="adminline">管理員通知</a>
+				<?php endif; ?>
 				<a href="#" class="nav-tab" data-wclon-tab="turnstile">Turnstile</a>
+				<?php if ( $mod_sysmail ) : ?>
 				<a href="#" class="nav-tab" data-wclon-tab="sysmail">系統信件</a>
+				<?php endif; ?>
+				<?php if ( $can_manage_modules ) : ?>
+				<a href="#" class="nav-tab" data-wclon-tab="modules">模組</a>
+				<?php endif; ?>
 			</nav>
 
 			<form method="post" action="options.php" id="wclon-settings-form">
@@ -924,14 +1025,9 @@ class WCLON_Settings {
 						</table>
 					</div>
 
-					<div class="wclon-notify-section wclon-notify-section--customer">
-						<div class="wclon-notify-section__head">
-							<span class="wclon-notify-section__badge">顧客通知</span>
-							<h2>訂單狀態變更時通知下單顧客本人</h2>
-						</div>
-
 					<div class="wclon-card">
 						<h2 class="wclon-card__title">顧客 LINE 訂單通知</h2>
+						<p class="wclon-card__desc">訂單狀態變更時通知下單顧客本人。</p>
 						<table class="form-table">
 							<tr>
 								<th scope="row">啟用顧客訂單通知</th>
@@ -1048,48 +1144,56 @@ class WCLON_Settings {
 						<button type="button" id="wclon_test_btn" class="button button-secondary">發送測試訊息</button>
 						<span id="wclon_test_msg" class="wclon-test-msg"></span>
 					</div>
-					</div><!-- /wclon-notify-section--customer -->
 				</div><!-- /wclon-tab-customer -->
 			</form>
 
+			<?php if ( $mod_notify ) : ?>
 			<!-- ══ 管理員通知 Tab（獨立 <form>／option，共用主表單的「儲存設定」按鈕，見下方 JS） ══ -->
 			<div class="wclon-admin-wrap wclon-tab-pane" data-tab="adminline" style="display:none;">
-				<div class="wclon-notify-section wclon-notify-section--admin">
-					<div class="wclon-notify-section__head">
-						<span class="wclon-notify-section__badge">管理員群組通知</span>
-						<h2>新訂單推播給店家/員工共用的 LINE 群組</h2>
-					</div>
-					<?php WCAN_Settings::render_tab_content(); ?>
-				</div><!-- /wclon-notify-section--admin -->
+				<?php WCAN_Settings::render_tab_content(); ?>
 			</div><!-- /wclon-tab-adminline -->
+			<?php endif; ?>
 
-			<!-- ══ Turnstile Tab（獨立 <form>／option） ══ -->
+			<!-- ══ Turnstile Tab（獨立 <form>／option，永遠顯示，不受模組開關影響） ══ -->
 			<div class="wclon-admin-wrap wclon-tab-pane" data-tab="turnstile" style="display:none;">
-				<div class="wclon-notify-section wclon-notify-section--turnstile">
-					<div class="wclon-notify-section__head">
-						<span class="wclon-notify-section__badge">人機驗證</span>
-						<h2>用 Cloudflare Turnstile 保護登入／註冊／忘記密碼表單</h2>
-					</div>
-					<?php WCLON_Turnstile::render_tab_content(); ?>
-				</div><!-- /wclon-notify-section--turnstile -->
+				<?php WCLON_Turnstile::render_tab_content(); ?>
 			</div><!-- /wclon-tab-turnstile -->
 
+			<?php if ( $mod_sysmail ) : ?>
 			<!-- ══ 系統信件 Tab（獨立 <form>／option） ══ -->
 			<div class="wclon-admin-wrap wclon-tab-pane" data-tab="sysmail" style="display:none;">
-				<div class="wclon-notify-section wclon-notify-section--sysmail">
-					<div class="wclon-notify-section__head">
-						<span class="wclon-notify-section__badge">WordPress 管理員通知信件</span>
-						<h2>減少 WordPress 核心與外掛自動更新寄給管理員的通知信量</h2>
-					</div>
-					<?php WCLON_System_Email_Settings::render_tab_content(); ?>
-				</div><!-- /wclon-notify-section--sysmail -->
+				<?php WCLON_System_Email_Settings::render_tab_content(); ?>
 			</div><!-- /wclon-tab-sysmail -->
+			<?php endif; ?>
+
+			<?php if ( $can_manage_modules ) : ?>
+			<!-- ══ 模組 Tab（獨立 <form>／option，僅限 manage_options） ══ -->
+			<div class="wclon-admin-wrap wclon-tab-pane" data-tab="modules" style="display:none;">
+				<form method="post" action="options.php" id="wclon-module-settings-form">
+					<?php settings_fields( 'wclon_module_settings_group' ); ?>
+					<div class="wclon-card">
+						<h2 class="wclon-card__title">功能模組</h2>
+						<p class="wclon-card__desc">關閉不需要的功能模組，對應頁籤與前台輸出會整個不出現，且不會註冊任何相關程式邏輯（不只是頁面上隱藏）。關閉後既有設定資料不會被刪除，之後重新開啟會沿用原本的設定。</p>
+						<?php foreach ( self::get_module_definitions() as $mod_key => $mod_info ) : ?>
+						<div class="wclon-module-row">
+							<label class="wclon-toggle">
+								<input type="checkbox" name="<?php echo esc_attr( self::MODULE_OPTION_KEY ); ?>[<?php echo esc_attr( $mod_key ); ?>]" value="1" <?php checked( self::module_enabled( $mod_key ), true ); ?>>
+								<span class="wclon-slider"></span>
+							</label>
+							<span class="wclon-module-label"><?php echo esc_html( $mod_info['label'] ); ?></span>
+							<span class="wclon-module-desc"><?php echo esc_html( $mod_info['desc'] ); ?></span>
+						</div>
+						<?php endforeach; ?>
+					</div>
+				</form>
+			</div><!-- /wclon-tab-modules -->
+			<?php endif; ?>
 
 			<!-- 「儲存設定」按鈕故意放在 wclon-settings-form 的 </form> 之外（用 form="wclon-settings-form"
 			     屬性關聯回主表單，HTML5 標準寫法，不影響送出行為）：這樣不管在哪個分頁，這顆按鈕都會落在
 			     當下可見內容的最下方。顧客通知仍屬於主表單（wclon-settings-form），「管理員通知」
-			     「Turnstile」「系統信件」三個頁籤各自是獨立的 <form> 區塊、寫在主表單關閉之後，按鈕
-			     留在此處才能在所有頁籤都保持可見。 -->
+			     「Turnstile」「系統信件」「模組」四個頁籤各自是獨立的 <form> 區塊、寫在主表單關閉之後，
+			     按鈕留在此處才能在所有頁籤都保持可見。 -->
 			<div id="wclon-main-submit">
 				<?php submit_button( '儲存設定', 'primary', 'submit', true, array( 'form' => 'wclon-settings-form' ) ); ?>
 			</div>
@@ -1121,25 +1225,27 @@ class WCLON_Settings {
 
 			try {
 				var saved = sessionStorage.getItem('wclon_active_tab');
-				// v1.20.0 起「通知管理」拆成獨立頁籤，舊的 'admin' id 不再對應任何 pane。v1.22.0
-				// 「系統信件」（'sysmail'）重新內建回本外掛（v1.21.0 曾短暫獨立成外掛移除過一次）。
-				// v1.23.0 起「購物車提醒」／「未付款提醒」（'cart'/'unpaid'）整個移到獨立的
-				// wc-marketing-automation 外掛，不再是本外掛的頁籤。
-				// 若瀏覽器 sessionStorage 還留著已移除／改名的舊 id，直接還原會導致所有 pane 都比對不到、整頁空白。
-				var validTabs = ['general', 'line', 'google', 'apple', 'customer', 'adminline', 'turnstile', 'sysmail'];
+				// v1.36.0 起模組開關會讓部分頁籤整個不輸出（見 PHP 端 $mod_social／$mod_notify／
+				// $mod_sysmail），validTabs 因此改成直接從「實際渲染出來的 nav-tab」反推，不再寫死
+				// 固定清單——寫死的清單在模組被關閉、原本存在 sessionStorage 的舊 tab id 對應的
+				// nav-tab／pane 都不再輸出時，會導致所有 pane 都比對不到、整頁空白（v1.20.0／v1.23.0
+				// 拆頁籤/搬頁籤時就踩過同一種問題，這次用「從 DOM 反推」一次徹底解決，不用每次異動
+				// 頁籤清單都要記得同步改這裡）。
+				var validTabs = Array.prototype.map.call(tabs, function (t) { return t.dataset.wclonTab; });
 				if (saved && validTabs.indexOf(saved) !== -1) showTab(saved);
 			} catch (e) {}
 
-			// ── 顧客通知／管理員通知／Turnstile／系統信件四個頁籤共用同一顆「儲存設定」按鈕 ──
-			// 顧客通知屬於主表單（wclon-settings-form）本身；其餘兩個各自是獨立的 <form>（各自對應不同的
+			// ── 顧客通知／管理員通知／Turnstile／系統信件／模組共用同一顆「儲存設定」按鈕 ──
+			// 顧客通知屬於主表單（wclon-settings-form）本身；其餘幾個各自是獨立的 <form>（各自對應不同的
 			// option 與 settings group，見 PHP 端註解），只是不想讓管理員在不同頁籤各自按一次。攔截主表單
-			// 的 submit：先用 fetch 把另外三個表單背景送到 options.php，等全部都處理完再讓主表單走原生
-			// submit（觸發 WordPress 標準的重新導向流程），頁面重新整理後四個 option 都已是最新值，也仍
+			// 的 submit：先用 fetch 把其他表單背景送到 options.php，等全部都處理完再讓主表單走原生
+			// submit（觸發 WordPress 標準的重新導向流程），頁面重新整理後所有 option 都已是最新值，也仍
 			// 會顯示 WP 原生「設定已儲存」提示。日後若再新增獨立表單的頁籤，記得同步把它的 form id 加進
-			// 下面 otherForms 陣列。
+			// 下面 otherForms 陣列。管理員通知／系統信件的表單在對應模組關閉時整個不會輸出，
+			// document.getElementById() 會拿到 null，靠 .filter(Boolean) 自然跳過，不需要另外判斷。
 			(function () {
 				var mainForm    = document.getElementById('wclon-settings-form');
-				var otherForms  = ['wcan-settings-form', 'wclon-turnstile-settings-form', 'wclon-system-email-settings-form']
+				var otherForms  = ['wcan-settings-form', 'wclon-turnstile-settings-form', 'wclon-system-email-settings-form', 'wclon-module-settings-form']
 					.map(function (id) { return document.getElementById(id); })
 					.filter(Boolean);
 

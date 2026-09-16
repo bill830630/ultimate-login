@@ -3,7 +3,7 @@
  * Plugin Name: Ultimate Login
  * Plugin URI:  https://example.com
  * Description: 讓顧客透過 LINE、Google、Apple 登入綁定帳號，並在 WooCommerce 訂單狀態變更時，透過 LINE Messaging API 自動推播訂單通知給顧客；同時可推播新訂單通知到管理員/員工共用的 LINE 群組或聊天室。
- * Version:     1.35.0
+ * Version:     1.36.0
  * Author:      NiBill
  * Text Domain: ultimate-login
  * Requires Plugins: woocommerce
@@ -44,7 +44,7 @@ if ( defined( 'WCLON_VERSION' ) ) {
 	return;
 }
 
-define( 'WCLON_VERSION', '1.35.0' );
+define( 'WCLON_VERSION', '1.36.0' );
 define( 'WCLON_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WCLON_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 // 會員中心「帳號綁定」獨立頁面的 WC Account endpoint slug
@@ -74,17 +74,36 @@ add_action( 'plugins_loaded', function () {
 		return;
 	}
 	WCLON_Settings::init();
-	WCLON_Line_Login::init();
-	WCLON_Google_Login::init();
-	WCLON_Apple_Login::init();
-	WCLON_Notifier::init();
-	WCAN_Settings::init();
-	WCAN_Webhook::init();
-	WCAN_Notifier::init();
-	WCLON_System_Email_Settings::init();
+
+	// 模組開關（v1.36.0 新增，仿效終極電商）：關閉的模組完全不呼叫對應 class 的 ::init()，
+	// 該模組的 hook 一個都不會註冊（不只是頁面上隱藏），效果比照終極電商。範圍分組見
+	// WCLON_Settings::get_module_definitions() 開頭的說明。Turnstile／更新檢查器不受模組開關
+	// 管轄，維持「基本功能」一律啟用。
+	if ( WCLON_Settings::module_enabled( 'social_login' ) ) {
+		WCLON_Line_Login::init();
+		WCLON_Google_Login::init();
+		WCLON_Apple_Login::init();
+	}
+	if ( WCLON_Settings::module_enabled( 'order_notify' ) ) {
+		WCLON_Notifier::init();
+		WCAN_Settings::init();
+		WCAN_Webhook::init();
+		WCAN_Notifier::init();
+	}
+	if ( WCLON_Settings::module_enabled( 'system_email' ) ) {
+		WCLON_System_Email_Settings::init();
+	}
 	WCLON_Turnstile::init();
 	WCLON_Updater::init();
 
+	$wclon_mod_social = WCLON_Settings::module_enabled( 'social_login' );
+	$wclon_mod_notify = WCLON_Settings::module_enabled( 'order_notify' );
+
+	// 模組開關（v1.36.0）：「社交登入」關閉時，以下到 pre_option_woocommerce_enable_checkout_login_reminder
+	// 這一大段（登入/註冊按鈕 wrapper、結帳/購物車綁定列、隱藏 WC 原生登入提示）整段不註冊，
+	// 不只是渲染時判斷「沒有任何平台憑證」就跳過而已。區塊內文不重新縮排，純粹加一層 if 包住，
+	// 避免大範圍搬動程式碼帶來風險。
+	if ( $wclon_mod_social ) {
 	// 社交登入按鈕共用 wrapper：priority 9 開啟、20 關閉（按鈕本身掛在預設的 10）
 	//
 	// **以下這段講的是「按鈕在表單下方」（below，預設）的情形**；v1.29.0 起位置可設定，
@@ -251,9 +270,22 @@ add_action( 'plugins_loaded', function () {
 		}
 		return $pre;
 	} );
+	} // if ( $wclon_mod_social )
 
-	// 會員中心「帳號綁定」獨立頁面（v1.9.4 起與「帳戶詳細資料」分開）
-	$wclon_account_social_enabled = function () {
+	// 會員中心「帳號綁定」獨立頁面（v1.9.4 起與「帳戶詳細資料」分開）。
+	//
+	// 「社交登入」或「訂單通知」任一模組啟用就要註冊：綁定帳號區塊（10/11/12）只在社交登入
+	// 模組啟用時才有內容（各登入 class 的 ::init() 沒跑就不會有任何 provider 掛上 echo_account_row），
+	// 但下方「通知設定」區塊的 Email 訂單通知開關（WCLON_Notifier::echo_email_notify_row()，
+	// 屬於「訂單通知」模組）跟社交登入無關，即使社交登入整個關掉，會員一樣要能在這裡關閉/開啟
+	// Email 訂單通知。$wclon_account_social_enabled() 另外多檢查一次「社交登入」模組是否啟用，
+	// 讓「綁定帳號」區塊在該模組關閉時，顯示的是下方「目前尚未開放社群帳號綁定。」提示，而不是
+	// 一個沒有任何 provider 可以渲染、卻還留著外層容器的空區塊。
+	if ( $wclon_mod_social || $wclon_mod_notify ) {
+	$wclon_account_social_enabled = function () use ( $wclon_mod_social ) {
+		if ( ! $wclon_mod_social ) {
+			return false;
+		}
 		if ( ! WCLON_Settings::get( 'show_on_myaccount', 1 ) ) {
 			return false;
 		}
@@ -314,26 +346,31 @@ add_action( 'plugins_loaded', function () {
 	add_action( 'woocommerce_account_' . WCLON_ACCOUNT_ENDPOINT . '_endpoint', function () {
 		echo '</div></div>';
 	}, 50 );
+	} // if ( $wclon_mod_social || $wclon_mod_notify )
 } );
 
-foreach ( array( 'wp_enqueue_scripts', 'login_enqueue_scripts' ) as $_wclon_hook ) {
-	add_action( $_wclon_hook, function () {
-		wp_enqueue_style(
-			'wclon-frontend',
-			WCLON_PLUGIN_URL . 'assets/css/wclon-frontend.css',
-			array(),
-			WCLON_VERSION
-		);
-		wp_enqueue_script(
-			'wclon-auth-nav',
-			WCLON_PLUGIN_URL . 'assets/js/wclon-auth-nav.js',
-			array(),
-			WCLON_VERSION,
-			true
-		);
-	} );
+// wclon-frontend.css／wclon-auth-nav.js 純粹是社交登入按鈕的樣式與導覽腳本，
+// 「社交登入」模組關閉時完全用不到，一併不註冊。
+if ( WCLON_Settings::module_enabled( 'social_login' ) ) {
+	foreach ( array( 'wp_enqueue_scripts', 'login_enqueue_scripts' ) as $_wclon_hook ) {
+		add_action( $_wclon_hook, function () {
+			wp_enqueue_style(
+				'wclon-frontend',
+				WCLON_PLUGIN_URL . 'assets/css/wclon-frontend.css',
+				array(),
+				WCLON_VERSION
+			);
+			wp_enqueue_script(
+				'wclon-auth-nav',
+				WCLON_PLUGIN_URL . 'assets/js/wclon-auth-nav.js',
+				array(),
+				WCLON_VERSION,
+				true
+			);
+		} );
+	}
+	unset( $_wclon_hook );
 }
-unset( $_wclon_hook );
 
 // 宣告支援 HPOS（高效能訂單儲存）
 add_action( 'before_woocommerce_init', function () {

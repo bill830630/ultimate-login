@@ -171,69 +171,6 @@
     font-weight: 500;
 }
 
-/* ── 通知管理分頁：板塊分組（顧客通知／管理員群組通知／購物車棄單提醒） ──
-   每個板塊底下可能是同一個大表單的一部分、也可能是各自獨立的 <form>（見 class-wclon-settings.php
-   的 render_page() 與 JS 合併送出邏輯），但視覺上統一用這組 class 標示「這些卡片屬於同一件事」。 */
-.wclon-notify-section {
-    --wclon-section-color: #2271b1;
-    margin: 40px 0 0;
-}
-
-.wclon-notify-section:first-child {
-    margin-top: 20px;
-}
-
-.wclon-notify-section--customer {
-    --wclon-section-color: #00c300;
-}
-
-.wclon-notify-section--admin {
-    --wclon-section-color: #2271b1;
-}
-
-.wclon-notify-section--turnstile {
-    --wclon-section-color: #f38020;
-}
-
-.wclon-notify-section--sysmail {
-    --wclon-section-color: #455a64;
-}
-
-.wclon-notify-section__head {
-    display: flex;
-    align-items: baseline;
-    flex-wrap: wrap;
-    gap: 4px 10px;
-    margin: 0;
-    padding-bottom: 10px;
-    border-bottom: 2px solid var(--wclon-section-color);
-}
-
-.wclon-notify-section__head h2 {
-    margin: 0;
-    padding: 0;
-    font-size: 14px;
-    font-weight: 400;
-    color: #646970;
-}
-
-.wclon-notify-section__badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 3px 12px;
-    border-radius: 999px;
-    background: var(--wclon-section-color);
-    color: #fff;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: .02em;
-}
-
-.wclon-notify-section .wclon-card:first-of-type {
-    margin-top: 20px;
-}
-
-
 /* ══════════════════════════════════════════════════════════════
    按鈕外觀預覽（v1.30.2 從 inline style 抽出來）
    ══════════════════════════════════════════════════════════════ */
@@ -415,4 +352,79 @@
     font-size: 13px;
     font-weight: bold;
     word-break: break-word;
+}
+
+/* ── 模組開關（v1.36.0，「模組」頁籤） ──
+   刻意仿照終極電商（ultimate-ecommerce）assets/css/twshop-admin.css 裡的 .twshop-toggle／
+   .twshop-slider／.twshop-module-row／.twshop-module-label／.twshop-module-desc，數值原樣照抄
+   （44×24 開關、#2271b1 開啟色⋯），只換掉 class 前綴避免跟同站的 twshop-toggle 撞名——
+   兩個外掛都在同一批客戶站上，即使 CSS scope 本來就是各自外掛的檔案不會互相載入，換前綴
+   純粹是預防萬一、也讓 class 名稱看得出來是本外掛的。這是本外掛目前唯一一處自訂滑動開關，
+   其餘設定一律沿用 WP 原生 checkbox／form-table（見「與 wc-marketing-automation 外掛的關係」
+   一節提過的介面慣例）——模組開關特地做成跟終極電商一樣的樣子，是使用者明確要求要一致。 */
+.wclon-toggle {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+    vertical-align: middle;
+    flex-shrink: 0;
+}
+
+.wclon-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.wclon-slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: #ccc;
+    border-radius: 24px;
+    transition: .2s;
+}
+
+.wclon-slider:before {
+    content: "";
+    position: absolute;
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background: #fff;
+    border-radius: 50%;
+    transition: .2s;
+}
+
+.wclon-toggle input:checked + .wclon-slider {
+    background: #2271b1;
+}
+
+.wclon-toggle input:checked + .wclon-slider:before {
+    transform: translateX(20px);
+}
+
+.wclon-module-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 13px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.wclon-module-row:last-child {
+    border-bottom: none;
+}
+
+.wclon-module-label {
+    font-weight: 600;
+    width: 120px;
+    flex-shrink: 0;
+}
+
+.wclon-module-desc {
+    color: #646970;
+    font-size: 13px;
 }
