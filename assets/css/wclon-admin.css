@@ -1,11 +1,16 @@
 /* === 終極登入 — 後台設定頁樣式 === */
 
 .wclon-admin-wrap {
-    max-width: 900px;
+    max-width: none;
+    margin: 0;
+    padding: 0 0 40px;
+    background: #f0f0f1;
 }
 
 .wclon-admin-header {
-    margin: 16px 0 20px;
+    margin: 0;
+    padding: 24px 30px 16px;
+    background: #fff;
 }
 
 .wclon-admin-header h1 {
@@ -22,26 +27,54 @@
 
 /* ── Tab 導覽 ── */
 .wclon-admin-wrap .nav-tab-wrapper {
-    margin-bottom: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    margin: 0;
+    padding: 0 30px;
+    border: 0;
     border-bottom: 1px solid #dcdcde;
+    background: #fff;
 }
 
 .wclon-admin-wrap .nav-tab {
+    float: none;
+    margin: 0;
+    padding: 0 0 10px;
+    border: 0;
+    background: transparent;
+    color: #50575e;
     font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+    text-decoration: none;
+}
+
+.wclon-admin-wrap .nav-tab:hover,
+.wclon-admin-wrap .nav-tab:focus {
+    color: var(--wp-admin-theme-color, #2271b1);
+    box-shadow: none;
+}
+
+.wclon-admin-wrap .nav-tab.nav-tab-active,
+.wclon-admin-wrap .nav-tab.nav-tab-active:hover,
+.wclon-admin-wrap .nav-tab.nav-tab-active:focus {
+    border-bottom: 2px solid var(--wp-admin-theme-color, #2271b1);
+    color: #1d2327;
 }
 
 /* ── 卡片 ── */
 .wclon-card {
     background: #fff;
-    border: 1px solid #dcdcde;
-    border-radius: 8px;
-    padding: 20px 24px;
-    margin: 20px 0;
-    box-shadow: 0 1px 1px rgba(0, 0, 0, .03);
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    padding: 20px;
+    margin: 24px 30px;
+    box-shadow: none;
 }
 
 .wclon-card + .wclon-card {
-    margin-top: 16px;
+    margin-top: 24px;
 }
 
 .wclon-card__title {
@@ -95,18 +128,18 @@
 .wclon-callout {
     display: flex;
     gap: 10px;
-    background: #f6f9ff;
-    border: 1px solid #d8e3fc;
-    border-left: 4px solid #00c300;
-    border-radius: 6px;
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-left: 4px solid #72aee6;
+    border-radius: 0;
     padding: 14px 16px;
-    margin: 0 0 20px;
+    margin: 24px 30px;
     font-size: 13px;
     color: #3c434a;
 }
 
 .wclon-tab-pane > .wclon-callout:first-child {
-    margin-top: 20px;
+    margin-top: 24px;
 }
 
 .wclon-callout__step {
@@ -146,10 +179,8 @@
 }
 
 .wclon-callout--warn {
-    background: #fff8f0;
-    border-color: #ffddb0;
-    border-left-color: #d63638;
-    color: #7a4a00;
+    border-left-color: #dba617;
+    color: #3c434a;
 }
 
 /* ── 測試推播回饋文字 ── */
@@ -164,7 +195,7 @@
     vertical-align: middle;
     margin-left: 6px;
     padding: 1px 8px;
-    border-radius: 999px;
+    border-radius: 3px;
     background: #f0f0f1;
     color: #646970;
     font-size: 11px;
@@ -427,4 +458,28 @@
 .wclon-module-desc {
     color: #646970;
     font-size: 13px;
+}
+
+/* 管理員通知等內容由其他設定類別輸出時會再包一層同名容器；它只負責 tab pane，
+   因此不應重複建立工作區。 */
+.wclon-admin-wrap .wclon-admin-wrap {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+}
+
+#wclon-main-submit {
+    margin: 0 30px 40px;
+}
+
+@media (max-width: 782px) {
+    .wclon-admin-header { padding: 20px 16px 12px; }
+    .wclon-admin-wrap .nav-tab-wrapper { padding: 0 16px; gap: 20px; overflow-x: auto; flex-wrap: nowrap; }
+    .wclon-admin-wrap .nav-tab { flex: 0 0 auto; }
+    .wclon-card,
+    .wclon-callout,
+    #wclon-main-submit { margin-left: 16px; margin-right: 16px; }
+    .wclon-card .form-table th,
+    .wclon-card .form-table td { display: block; width: auto; padding-right: 0; }
+    .wclon-card .form-table th { padding-bottom: 0; }
 }

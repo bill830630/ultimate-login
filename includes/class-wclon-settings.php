@@ -681,7 +681,7 @@ class WCLON_Settings {
 				</div>
 			</div>
 
-			<nav class="nav-tab-wrapper">
+			<nav class="nav-tab-wrapper" aria-label="終極登入設定">
 				<a href="#" class="nav-tab nav-tab-active" data-wclon-tab="general">一般設定</a>
 				<?php if ( $mod_social ) : ?>
 				<a href="#" class="nav-tab" data-wclon-tab="line">LINE</a>
@@ -1249,15 +1249,38 @@ class WCLON_Settings {
 			// ── Tab 切換 ──
 			var tabs  = document.querySelectorAll('[data-wclon-tab]');
 			var panes = document.querySelectorAll('.wclon-tab-pane');
+			var tabList = document.querySelector('.wclon-admin-wrap > .nav-tab-wrapper');
+
+			if (tabList) tabList.setAttribute('role', 'tablist');
+			tabs.forEach(function (tab) {
+				var tabId = tab.dataset.wclonTab;
+				tab.id = 'wclon-tab-control-' + tabId;
+				tab.setAttribute('role', 'tab');
+				tab.setAttribute('aria-controls', 'wclon-tab-' + tabId);
+				tab.setAttribute('href', '#' + tabId);
+			});
+			panes.forEach(function (pane) {
+				pane.id = 'wclon-tab-' + pane.dataset.tab;
+				pane.setAttribute('role', 'tabpanel');
+				pane.setAttribute('aria-labelledby', 'wclon-tab-control-' + pane.dataset.tab);
+			});
 
 			function showTab(tabId) {
 				panes.forEach(function (p) {
-					p.style.display = (p.dataset.tab === tabId) ? '' : 'none';
+					var isActive = p.dataset.tab === tabId;
+					p.style.display = isActive ? '' : 'none';
+					p.hidden = !isActive;
 				});
 				tabs.forEach(function (t) {
-					t.classList.toggle('nav-tab-active', t.dataset.wclonTab === tabId);
+					var isActive = t.dataset.wclonTab === tabId;
+					t.classList.toggle('nav-tab-active', isActive);
+					t.setAttribute('aria-selected', isActive ? 'true' : 'false');
+					t.setAttribute('tabindex', isActive ? '0' : '-1');
 				});
 				try { sessionStorage.setItem('wclon_active_tab', tabId); } catch (e) {}
+				if (window.history && window.history.replaceState) {
+					window.history.replaceState(null, '', '#' + tabId);
+				}
 			}
 
 			tabs.forEach(function (tab) {
@@ -1267,8 +1290,24 @@ class WCLON_Settings {
 				});
 			});
 
+			// 採用 WordPress/WooCommerce 頁籤慣例：左右方向鍵在同一層頁籤間切換，Home/End
+			// 可直接移到首尾；Tab 鍵仍按欄位自然順序前進。
+			tabs.forEach(function (tab, index) {
+				tab.addEventListener('keydown', function (e) {
+					var next = null;
+					if (e.key === 'ArrowRight') next = (index + 1) % tabs.length;
+					if (e.key === 'ArrowLeft') next = (index - 1 + tabs.length) % tabs.length;
+					if (e.key === 'Home') next = 0;
+					if (e.key === 'End') next = tabs.length - 1;
+					if (next === null) return;
+					e.preventDefault();
+					tabs[next].focus();
+					showTab(tabs[next].dataset.wclonTab);
+				});
+			});
+
 			try {
-				var saved = sessionStorage.getItem('wclon_active_tab');
+				var saved = window.location.hash.slice(1) || sessionStorage.getItem('wclon_active_tab');
 				// v1.36.0 起模組開關會讓部分頁籤整個不輸出（見 PHP 端 $mod_social／$mod_notify／
 				// $mod_sysmail），validTabs 因此改成直接從「實際渲染出來的 nav-tab」反推，不再寫死
 				// 固定清單——寫死的清單在模組被關閉、原本存在 sessionStorage 的舊 tab id 對應的
