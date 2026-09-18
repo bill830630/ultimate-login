@@ -486,12 +486,13 @@
 
 @media (max-width: 782px) {
     .wclon-admin-wrap { margin-left: -10px; width: calc(100% + 10px); }
-    .wclon-admin-header { padding: 0 16px; }
-    .wclon-admin-wrap .nav-tab-wrapper { padding: 9px 16px 0; gap: 20px; overflow-x: auto; flex-wrap: nowrap; }
-    .wclon-admin-wrap .nav-tab { flex: 0 0 auto; }
+    .wclon-admin-header { padding: 0 24px; }
+    .wclon-admin-wrap .nav-tab-wrapper { padding: 9px 24px 0; gap: 24px; overflow-x: auto; flex-wrap: nowrap; }
+    .wclon-admin-wrap .nav-tab { flex: 0 0 auto; margin: 10px 10px 0 0; }
+    .wclon-admin-wrap .nav-tab.nav-tab-active { margin-bottom: 0; }
     .wclon-admin-wrap #wclon-settings-form > .wclon-tab-pane,
-    .wclon-admin-wrap > .wclon-tab-pane { padding: 20px 16px 0; }
-    #wclon-main-submit { margin-left: 16px; margin-right: 16px; }
+    .wclon-admin-wrap > .wclon-tab-pane { padding: 24px 30px 0; }
+    #wclon-main-submit { margin-left: 30px; margin-right: 30px; }
     .wclon-card .form-table th,
     .wclon-card .form-table td { display: block; width: auto; padding-right: 0; }
     .wclon-card .form-table th { padding-bottom: 0; }
