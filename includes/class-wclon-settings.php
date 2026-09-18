@@ -677,10 +677,7 @@ class WCLON_Settings {
 		?>
 		<div class="wrap wclon-admin-wrap">
 			<div class="wclon-admin-header">
-				<div>
-					<h1>終極登入</h1>
-					<p>社交登入與 LINE 通知設定。</p>
-				</div>
+				<h1>終極登入</h1>
 			</div>
 
 			<nav class="nav-tab-wrapper" aria-label="終極登入設定">

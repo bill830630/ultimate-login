@@ -11,7 +11,7 @@
 
 .wclon-admin-header {
     margin: 0;
-    padding: 24px 30px 16px;
+    padding: 22px 30px 12px;
 }
 
 .wclon-admin-header h1 {
@@ -22,17 +22,11 @@
     line-height: 1.35;
 }
 
-.wclon-admin-header p {
-    margin: 4px 0 0;
-    color: #646970;
-    font-size: 13px;
-}
-
 /* ── Tab 導覽 ── */
 .wclon-admin-wrap .nav-tab-wrapper {
     display: flex;
     flex-wrap: wrap;
-    gap: 26px;
+    gap: 24px;
     margin: 0;
     padding: 0 30px;
     border: 0;
@@ -486,7 +480,7 @@
 
 @media (max-width: 782px) {
     .wclon-admin-header { padding: 20px 16px 12px; }
-    .wclon-admin-wrap .nav-tab-wrapper { padding: 0 16px; gap: 22px; overflow-x: auto; flex-wrap: nowrap; }
+    .wclon-admin-wrap .nav-tab-wrapper { padding: 0 16px; gap: 20px; overflow-x: auto; flex-wrap: nowrap; }
     .wclon-admin-wrap .nav-tab { flex: 0 0 auto; }
     .wclon-admin-wrap #wclon-settings-form > .wclon-tab-pane,
     .wclon-admin-wrap > .wclon-tab-pane { padding: 20px 16px 0; }
