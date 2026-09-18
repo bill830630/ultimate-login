@@ -143,7 +143,7 @@ class WCLON_System_Email_Settings {
 						<th scope="row">外掛自動更新通知</th>
 						<td>
 							<label><input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[disable_plugin_update_admin_email]" value="1" <?php checked( $plugin_upd, 1 ); ?>> 停用「外掛自動更新完成」寄給管理員的通知信</label>
-							<p class="description">僅影響 WordPress 核心背景自動更新（WP-Cron）完成後寄出的「自動更新完成」通知信，涵蓋任何有啟用自動更新的外掛（例如 WooCommerce、blocksy-companion、ecpay-ecommerce-for-woocommerce 等）；不影響本外掛與終極電商模組（twshop）——兩者皆未上架 WordPress.org，沒有此自動更新機制。不影響其他外掛主動寄送的通知信（例如訂單相關信件）。</p>
+							<p class="description">僅影響 WordPress 背景自動更新完成後寄出的外掛更新通知信；不影響其他外掛主動寄送的通知信（例如訂單相關信件）。</p>
 						</td>
 					</tr>
 				</table>

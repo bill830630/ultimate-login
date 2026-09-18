@@ -570,7 +570,7 @@ class WCLON_Turnstile {
 							<label><input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[protect_register]" value="1" <?php checked( self::get( 'protect_register', 1 ), 1 ); ?>> 註冊表單</label><br>
 							<label><input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[protect_lostpassword]" value="1" <?php checked( self::get( 'protect_lostpassword', 1 ), 1 ); ?>> 忘記密碼表單</label><br>
 							<label><input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[protect_comment]" value="1" <?php checked( self::get( 'protect_comment', 1 ), 1 ); ?>> 留言／商品評價表單</label>
-							<p class="description">不影響 LINE／Google／Apple 社交登入——那三種是導向對方網站授權後直接建立登入狀態，不經過帳密表單，本來就沒有暴力破解的空間。「留言／商品評價」一併涵蓋文章留言與 WooCommerce 商品評價（兩者在 WordPress 裡都是 comment），驗證未通過時會顯示錯誤頁並提供「返回上一頁」連結。結帳頁下單目前不在保護範圍內。</p>
+							<p class="description">「留言／商品評價」涵蓋文章留言與 WooCommerce 商品評價。驗證未通過時會顯示錯誤頁並提供「返回上一頁」連結。結帳頁下單目前不在保護範圍內。</p>
 						</td>
 					</tr>
 					<tr>
