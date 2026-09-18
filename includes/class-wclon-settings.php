@@ -35,6 +35,32 @@ class WCLON_Settings {
 	 */
 	private static $page_hook = '';
 
+	/**
+	 * 與終極電商共用的「快捷鍵」父選單 icon（v1.37.0 新增）。
+	 *
+	 * 逐字複製自終極電商 includes/admin/menus.php 裡 twshop_register_menus()
+	 * add_menu_page() 用的同一串 base64 SVG——兩個外掛各自獨立、不能互相 require
+	 * 對方檔案，只能各自維護一份相同內容的複本。若終極電商更新這個 icon（換圖案、
+	 * 換底色…），這裡要記得手動同步，否則兩站會因為哪個外掛先建立父選單而顯示
+	 * 不同圖示。
+	 */
+	const SHORTCUT_ICON = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBmaWxsPSJ3aGl0ZSIgaWQ9Il/lnJblsaRfMiIgZGF0YS1uYW1lPSLlnJblsaQgMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSIwIDAgNDEzLjExIDQxMy4xMSI+CiAgPGcgaWQ9Il/lnJblsaRfMS0yIiBkYXRhLW5hbWU9IuWcluWxpCAxIj4KICAgIDxnPgogICAgICA8cGF0aCBkPSJNMjA2LjU1LDBDMTM5LjI1LDAsNzkuNDcsMzIuMiw0MS43Niw4Mi4wMmw4MC40Niw4MC40Niw0NC4wNy00NC4wN2MxMy42NC0xMy42NCwyOS42NS0yMy40NCw0Ni43LTI5LjQ0LDEwLjIzLTMuNTksMjAuODMtNS44MiwzMS41NC02LjY3LDM1LjExLTIuNzksNzEuMTksOS4yNSw5OC4wNCwzNi4xMSw0OC42OSw0OC42OCw0OC42OCwxMjcuNjIsMCwxNzYuMy0yNi44NSwyNi44Ny02Mi45NCwzOC45MS05OC4wNSwzNi4xMS0xMC42Mi0uODQtMjEuMTYtMy4wMy0zMS4zMy02LjU4LTE3LjE0LTUuOTktMzMuMjItMTUuODQtNDYuOTEtMjkuNTMtLjA0LS4wMy0uMDYtLjA3LS4xLS4xMmwtNDMuOTYtNDMuOTYtODAuNDYsODAuNDZjMzcuNzEsNDkuODIsOTcuNDksODIuMDIsMTY0Ljc5LDgyLjAyLDExNC4wOCwwLDIwNi41NS05Mi40OCwyMDYuNTUtMjA2LjU1UzMyMC42MywwLDIwNi41NSwwWiIvPgogICAgICA8cGF0aCBkPSJNMTEuMTMsMTM5LjUzQzMuOTIsMTYwLjU1LDAsMTgzLjA5LDAsMjA2LjU1czMuOTIsNDYuMDEsMTEuMTMsNjcuMDJsNjcuMDItNjcuMDJMMTEuMTMsMTM5LjUzWiIvPgogICAgICA8cGF0aCBkPSJNMjQ0LjUzLDI2OC4wOGMxOS4wNywzLjA3LDM5LjI5LTIuNzUsNTMuOTktMTcuNDYsMjQuMzMtMjQuMzMsMjQuMzItNjMuOC0uMDEtODguMTQtMTQuNy0xNC43LTM0LjkxLTIwLjUxLTUzLjk3LTE3LjQ1LTExLjM3LDEuODEtMjIuMzMsNi43Ny0zMS40NiwxNC45Mi0uOTMuODEtMS44MywxLjY2LTIuNzEsMi41NGwtNDQuMDYsNDQuMDcsNDQuMDcsNDQuMDdjLjkuOSwxLjgzLDEuNzcsMi43NywyLjYxLDkuMTQsOC4wOCwyMC4wNiwxMy4wNCwzMS4zOSwxNC44NFoiLz4KICAgIDwvZz4KICA8L2c+Cjwvc3ZnPg==';
+
+	/**
+	 * 與終極電商互相 fallback 決定「快捷鍵」父選單 slug（v1.37.0 新增）。
+	 *
+	 * 兩邊都各自嘗試建立父選單、用 $admin_page_hooks 判斷是否已存在，不依賴載入順序。
+	 * 見終極電商 includes/admin/menus.php 的 twshop_shortcut_parent_slug()（鏡射邏輯）
+	 * 與兩邊 CLAUDE.md「快捷鍵父選單合併」一節。
+	 */
+	public static function shortcut_parent_slug() {
+		global $admin_page_hooks;
+		if ( isset( $admin_page_hooks['wc-general-settings'] ) ) {
+			return 'wc-general-settings';
+		}
+		return 'wclon-settings';
+	}
+
 	public static function init() {
 		add_action( 'admin_menu', array( __CLASS__, 'add_menu' ) );
 		add_action( 'admin_init', array( __CLASS__, 'register_settings' ) );
@@ -459,14 +485,25 @@ class WCLON_Settings {
 	 * 用小數插在它後面既不會蓋掉別人（同一個整數位置會互相覆蓋），視覺上也跟電商相關的選單排在一起。
 	 */
 	public static function add_menu() {
-		self::$page_hook = add_menu_page(
-			'終極登入',
-			'終極登入',
-			'manage_woocommerce',
-			'wclon-settings',
-			array( __CLASS__, 'render_page' ),
-			'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBmaWxsPSJ3aGl0ZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSIwIDAgMzk1LjQyIDM5NS40MiI+CiAgPGc+CiAgICA8cGF0aCBkPSJNOTEuNDQsMzY0LjQ2bDYzLjM2LTYzLjM2LTQyLjkxLTQyLjkxYy00Ny40LTQ3LjQtNDcuNC0xMjQuMjUsMC0xNzEuNjQsNDcuNC00Ny40LDEyNC4yNS00Ny40LDE3MS42NCwwLDQ3LjQsNDcuNCw0Ny40LDEyNC4yNSwwLDE3MS42NGwtNDIuOTEsNDIuOTEsNjMuMzYsNjMuMzZjNTQuOTgtMzUuMTEsOTEuNDQtOTYuNjcsOTEuNDQtMTY2Ljc0QzM5NS40Miw4OC41MiwzMDYuOSwwLDE5Ny43MSwwUzAsODguNTIsMCwxOTcuNzFjMCw3MC4wNywzNi40NiwxMzEuNjMsOTEuNDQsMTY2Ljc1WiIvPgogICAgPHBhdGggZD0iTTE1MS42OSwzOTAuMDNjMTQuNzcsMy41MiwzMC4xNyw1LjQsNDYuMDIsNS40czMxLjI1LTEuODgsNDYuMDItNS40bC00Ni4wMi00Ni4wMi00Ni4wMiw0Ni4wMloiLz4KICAgIDxwYXRoIGQ9Ik0yNDAuNjIsMjE1LjI3YzIzLjctMjMuNywyMy43LTYyLjEyLDAtODUuODItMjMuNy0yMy43LTYyLjEyLTIzLjctODUuODIsMC0yMy42OSwyMy42OS0yMy43LDYyLjEyLDAsODUuODJsNDIuOTEsNDIuOTEsNDIuOTEtNDIuOTFaIi8+CiAgPC9nPgo8L3N2Zz4K',
-			56.5
+		$parent_slug = self::shortcut_parent_slug();
+		$is_owner    = ( 'wclon-settings' === $parent_slug );
+
+		if ( $is_owner ) {
+			add_menu_page(
+				'快捷鍵', '快捷鍵', 'manage_woocommerce', $parent_slug,
+				array( __CLASS__, 'render_page' ), self::SHORTCUT_ICON, 56
+			);
+			remove_submenu_page( $parent_slug, $parent_slug );
+		}
+
+		// 不管是不是 owner，這一行都要執行——這是終極登入唯一的子選單項目。owner 情境下，
+		// 這是第一筆 add_submenu_page(slug===parent)，避免 WordPress 自動插入重複項目；
+		// attach 情境下，這是掛在終極電商父選單底下的普通一筆。絕對不能在這裡呼叫
+		// remove_submenu_page( $parent_slug, $parent_slug )——那會刪掉 owner（終極電商）
+		// 的第一筆子選單「儀表板」。
+		self::$page_hook = add_submenu_page(
+			$parent_slug, '終極登入', '終極登入', 'manage_woocommerce',
+			'wclon-settings', array( __CLASS__, 'render_page' )
 		);
 	}
 
