@@ -129,7 +129,7 @@ class WCLON_System_Email_Settings {
 			<?php settings_fields( 'wclon_system_email_settings_group' ); ?>
 			<div class="wclon-card">
 				<h2 class="wclon-card__title">WordPress 管理員通知信件</h2>
-				<p class="wclon-card__desc">關閉 WordPress 核心（含其他外掛透過標準機制觸發）預設寄給管理員信箱的通知信，僅影響管理員收到的那一封，可減少 Email 發送量。</p>
+				<p class="wclon-card__desc">選擇要停用的管理員通知信；不影響寄給會員的信件。</p>
 				<table class="form-table">
 					<tr>
 						<th scope="row">新使用者註冊通知</th>

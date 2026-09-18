@@ -677,7 +677,7 @@ class WCLON_Settings {
 			<div class="wclon-admin-header">
 				<div>
 					<h1>終極登入</h1>
-					<p>讓顧客用 LINE / Google / Apple 登入綁定帳號，訂單通知即時推播給顧客與管理員 LINE 群組。</p>
+					<p>社交登入與 LINE 通知設定。</p>
 				</div>
 			</div>
 
@@ -724,7 +724,7 @@ class WCLON_Settings {
 
 					<div class="wclon-card">
 						<h2 class="wclon-card__title">購物車／結帳頁綁定列</h2>
-						<p class="wclon-card__desc">這條列<strong>分成兩個獨立區塊</strong>：上面是 LINE（綁定後才收得到訂單通知），下面是 Google / Apple（單純快速登入，沒有通知功能）。同時套用於結帳頁、購物車頁與 <code>[wclon_social_bar]</code> 短代碼三個位置。</p>
+						<p class="wclon-card__desc">分別設定 LINE 綁定與 Google / Apple 登入區塊，套用於購物車、結帳頁及 <code>[wclon_social_bar]</code>。</p>
 						<table class="form-table">
 							<tr>
 								<th scope="row"><label for="wclon_line_bar_title">LINE 區塊標題</label></th>
@@ -745,7 +745,7 @@ class WCLON_Settings {
 
 					<div class="wclon-card">
 						<h2 class="wclon-card__title">按鈕外觀</h2>
-						<p class="wclon-card__desc">前台社交按鈕的形狀、配色、版型可在此統一調整（套用至登入 / 註冊 / 綁定按鈕，結帳頁精簡按鈕僅套用形狀）。LINE 官方僅提供綠色按鈕，配色設定僅影響 Google / Apple。</p>
+						<p class="wclon-card__desc">調整社交登入按鈕的形狀與版型；配色僅影響 Google / Apple。</p>
 						<table class="form-table">
 							<tr>
 								<th scope="row"><label for="wclon_btn_shape">形狀</label></th>
@@ -841,7 +841,7 @@ class WCLON_Settings {
 
 					<div class="wclon-card">
 						<h2 class="wclon-card__title">LINE Login 憑證</h2>
-						<p class="wclon-card__desc">用於顧客登入/綁定授權，與訂單推播用的 Channel Access Token 是不同憑證（見「顧客通知」分頁）。</p>
+						<p class="wclon-card__desc">填入 LINE Login 憑證；訂單推播的 Token 請至「顧客通知」設定。</p>
 						<table class="form-table">
 							<tr>
 								<th scope="row"><label>LINE Login Channel ID</label></th>
@@ -863,7 +863,7 @@ class WCLON_Settings {
 
 					<div class="wclon-card">
 						<h2 class="wclon-card__title">綁定歡迎優惠券</h2>
-						<p class="wclon-card__desc">顧客帳號第一次成功綁定 LINE 時，自動發送一張限定本人使用一次的優惠券。<strong>需已加官方帳號好友才會發放</strong>：尚未加好友時會先暫緩，等顧客之後加好友再自動補發（需先在「管理員通知」分頁設定好 Webhook）。</p>
+						<p class="wclon-card__desc">首次綁定 LINE 後發送專屬優惠券；未加好友時暫緩，加入後補發（需先設定「管理員通知」的 Webhook）。</p>
 						<div class="wclon-flex-card-layout">
 						<div class="wclon-flex-card-layout__fields">
 						<table class="form-table">
@@ -1169,7 +1169,7 @@ class WCLON_Settings {
 
 					<div class="wclon-card">
 						<h2 class="wclon-card__title">測試推播（顧客）</h2>
-						<p class="wclon-card__desc">發送一則含訂單卡片樣式的測試 Flex Message，確認訊息外觀與 Token 設定是否正確。</p>
+						<p class="wclon-card__desc">發送測試訊息，確認訂單卡片外觀與 Token。</p>
 						<table class="form-table" style="max-width:600px;">
 							<tr>
 								<th scope="row"><label for="wclon_test_line_id">LINE User ID</label></th>
@@ -1217,7 +1217,7 @@ class WCLON_Settings {
 					<?php settings_fields( 'wclon_module_settings_group' ); ?>
 					<div class="wclon-card">
 						<h2 class="wclon-card__title">功能模組</h2>
-						<p class="wclon-card__desc">關閉不需要的功能模組，對應頁籤與前台輸出會整個不出現，且不會註冊任何相關程式邏輯（不只是頁面上隱藏）。關閉後既有設定資料不會被刪除，之後重新開啟會沿用原本的設定。</p>
+						<p class="wclon-card__desc">停用模組會隱藏對應頁籤與前台功能；設定資料會保留，重新啟用後可沿用。</p>
 						<?php foreach ( self::get_module_definitions() as $mod_key => $mod_info ) : ?>
 						<div class="wclon-module-row">
 							<label class="wclon-toggle">

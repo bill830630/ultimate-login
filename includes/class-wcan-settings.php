@@ -276,7 +276,7 @@ class WCAN_Settings {
 
 		<div class="wclon-card">
 			<h2 class="wclon-card__title">測試推播（管理員群組）</h2>
-			<p class="wclon-card__desc">發送一則含新訂單卡片樣式的測試 Flex Message，確認訊息外觀與 Token 設定是否正確。</p>
+			<p class="wclon-card__desc">發送測試訊息，確認新訂單卡片外觀與 Token。</p>
 			<table class="form-table" style="max-width:600px;">
 				<tr>
 					<th scope="row"><label for="wcan_test_line_id">群組/聊天室 ID</label></th>

@@ -536,7 +536,7 @@ class WCLON_Turnstile {
 
 			<div class="wclon-card">
 				<h2 class="wclon-card__title">Cloudflare Turnstile</h2>
-				<p class="wclon-card__desc">在登入／註冊／忘記密碼／留言表單加上 Cloudflare 的人機驗證，阻擋自動化的暴力破解、大量假帳號註冊與垃圾留言。金鑰請到 <a href="https://dash.cloudflare.com/?to=/:account/turnstile" target="_blank" rel="noopener">Cloudflare 後台 → Turnstile</a> 新增網站取得（Widget Mode 選 Managed 即可，外觀由 Cloudflare 那邊決定）。</p>
+				<p class="wclon-card__desc">保護登入、註冊、忘記密碼與留言表單。金鑰請至 <a href="https://dash.cloudflare.com/?to=/:account/turnstile" target="_blank" rel="noopener">Cloudflare Turnstile</a> 建立網站取得。</p>
 				<table class="form-table">
 					<tr>
 						<th scope="row">啟用 Turnstile</th>
@@ -561,7 +561,7 @@ class WCLON_Turnstile {
 
 			<div class="wclon-card">
 				<h2 class="wclon-card__title">保護哪些表單</h2>
-				<p class="wclon-card__desc">四種內建表單各自獨立、開關一開就自動生效。帳號類三種涵蓋 WordPress 登入頁（<code>wp-login.php</code>）、WooCommerce 我的帳號，以及佈景主題 Blocksy 標頭的帳號彈出視窗；留言類涵蓋文章留言與 WooCommerce 商品評價。最下面的 Elementor 表單是另一種模式——由你在編輯器裡逐張表單決定要不要加，說明見該列。</p>
+				<p class="wclon-card__desc">內建表單可各自啟用；Elementor 表單需在編輯器中逐一加入 Turnstile 欄位。</p>
 				<table class="form-table">
 					<tr>
 						<th scope="row">套用範圍</th>
@@ -629,7 +629,7 @@ class WCLON_Turnstile {
 
 			<div class="wclon-card">
 				<h2 class="wclon-card__title">連線失敗時的行為</h2>
-				<p class="wclon-card__desc">向 Cloudflare <code>siteverify</code> 驗證時如果連不上（DNS、防火牆、逾時、回應非 200），本次一律<strong>放行</strong>並寫入 PHP <code>error_log</code>（訊息前綴 <code>WCLON Turnstile:</code>）。驗證服務的短暫故障不應該讓整站沒有人能登入或註冊；顧客沒解或 token 無效這種「確定驗證未通過」的情況仍然照常擋下。</p>
+				<p class="wclon-card__desc">Cloudflare 暫時無法連線時會放行並記錄錯誤；驗證明確失敗時仍會擋下。</p>
 			</div>
 		</form>
 		<?php
