@@ -2,8 +2,9 @@
 
 .wclon-admin-wrap {
     max-width: none;
-    margin: 0;
+    margin: 0 0 0 -20px;
     padding: 0;
+    width: calc(100% + 20px);
     min-height: calc(100vh - 32px);
     box-sizing: border-box;
     background: #f0f0f1;
@@ -11,15 +12,19 @@
 
 .wclon-admin-header {
     margin: 0;
-    padding: 22px 30px 12px;
+    min-height: 60px;
+    padding: 0 24px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
 }
 
 .wclon-admin-header h1 {
     margin: 0;
     padding: 0;
-    font-size: 18px;
-    font-weight: 600;
-    line-height: 1.35;
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 21px;
 }
 
 /* ── Tab 導覽 ── */
@@ -28,7 +33,7 @@
     flex-wrap: wrap;
     gap: 24px;
     margin: 0;
-    padding: 0 30px;
+    padding: 9px 24px 0;
     border: 0;
     border-bottom: 1px solid #dcdcde;
 }
@@ -36,11 +41,11 @@
 .wclon-admin-wrap .nav-tab {
     float: none;
     margin: 0;
-    padding: 0 0 12px;
+    padding: 0 0 10px;
     border: 0;
     background: transparent;
     color: #50575e;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 500;
     line-height: 20px;
     text-decoration: none;
@@ -61,6 +66,7 @@
 .wclon-admin-wrap .nav-tab.nav-tab-active:hover,
 .wclon-admin-wrap .nav-tab.nav-tab-active:focus {
     border-bottom: 2px solid var(--wp-admin-theme-color, #2271b1);
+    margin-bottom: -1px;
     color: #1d2327;
 }
 
@@ -479,8 +485,9 @@
 #wclon-main-submit p.submit { margin: 0; padding: 0; }
 
 @media (max-width: 782px) {
-    .wclon-admin-header { padding: 20px 16px 12px; }
-    .wclon-admin-wrap .nav-tab-wrapper { padding: 0 16px; gap: 20px; overflow-x: auto; flex-wrap: nowrap; }
+    .wclon-admin-wrap { margin-left: -10px; width: calc(100% + 10px); }
+    .wclon-admin-header { padding: 0 16px; }
+    .wclon-admin-wrap .nav-tab-wrapper { padding: 9px 16px 0; gap: 20px; overflow-x: auto; flex-wrap: nowrap; }
     .wclon-admin-wrap .nav-tab { flex: 0 0 auto; }
     .wclon-admin-wrap #wclon-settings-form > .wclon-tab-pane,
     .wclon-admin-wrap > .wclon-tab-pane { padding: 20px 16px 0; }
