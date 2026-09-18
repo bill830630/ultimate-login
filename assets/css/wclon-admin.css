@@ -1,7 +1,7 @@
 /* === 終極登入 — 後台設定頁樣式 === */
 
 .wclon-admin-wrap {
-    max-width: none;
+    max-width: 960px;
     margin: 0 0 0 -20px;
     padding: 0;
     width: calc(100% + 20px);
