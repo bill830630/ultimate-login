@@ -1262,7 +1262,9 @@ class WCLON_Settings {
 			panes.forEach(function (pane) {
 				pane.id = 'wclon-tab-' + pane.dataset.tab;
 				pane.setAttribute('role', 'tabpanel');
-				pane.setAttribute('aria-labelledby', 'wclon-tab-control-' + pane.dataset.tab);
+				if (Array.prototype.some.call(tabs, function (tab) { return tab.dataset.wclonTab === pane.dataset.tab; })) {
+					pane.setAttribute('aria-labelledby', 'wclon-tab-control-' + pane.dataset.tab);
+				}
 			});
 
 			function showTab(tabId) {
@@ -1315,7 +1317,7 @@ class WCLON_Settings {
 				// 拆頁籤/搬頁籤時就踩過同一種問題，這次用「從 DOM 反推」一次徹底解決，不用每次異動
 				// 頁籤清單都要記得同步改這裡）。
 				var validTabs = Array.prototype.map.call(tabs, function (t) { return t.dataset.wclonTab; });
-				if (saved && validTabs.indexOf(saved) !== -1) showTab(saved);
+				showTab(saved && validTabs.indexOf(saved) !== -1 ? saved : 'general');
 			} catch (e) {}
 
 			// ── 顧客通知／管理員通知／Turnstile／系統信件／模組共用同一顆「儲存設定」按鈕 ──
