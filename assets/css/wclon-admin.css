@@ -32,7 +32,7 @@
 .wclon-admin-wrap .nav-tab-wrapper {
     display: flex;
     flex-wrap: wrap;
-    gap: 28px;
+    gap: 26px;
     margin: 0;
     padding: 0 30px;
     border: 0;
@@ -509,7 +509,7 @@
 
 @media (max-width: 782px) {
     .wclon-admin-header { padding: 20px 16px 12px; }
-    .wclon-admin-wrap .nav-tab-wrapper { padding: 0 16px; gap: 24px; overflow-x: auto; flex-wrap: nowrap; }
+    .wclon-admin-wrap .nav-tab-wrapper { padding: 0 16px; gap: 22px; overflow-x: auto; flex-wrap: nowrap; }
     .wclon-admin-wrap .nav-tab { flex: 0 0 auto; }
     .wclon-admin-wrap .button { min-height: 40px; padding: 0 14px; font-size: 14px; }
     .wclon-admin-wrap #wclon-settings-form > .wclon-tab-pane,
