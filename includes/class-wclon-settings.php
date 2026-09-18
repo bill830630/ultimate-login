@@ -136,8 +136,10 @@ class WCLON_Settings {
 		if ( ! self::$page_hook || self::$page_hook !== $hook ) {
 			return;
 		}
+		// 先載入 WooCommerce 後台樣式，按鈕與表格沿用原生元件；本外掛 CSS 只補頁面佈局。
+		wp_enqueue_style( 'woocommerce_admin_styles' );
 		wp_enqueue_style( 'wclon-frontend', WCLON_PLUGIN_URL . 'assets/css/wclon-frontend.css', array(), WCLON_VERSION );
-		wp_enqueue_style( 'wclon-admin', WCLON_PLUGIN_URL . 'assets/css/wclon-admin.css', array(), WCLON_VERSION );
+		wp_enqueue_style( 'wclon-admin', WCLON_PLUGIN_URL . 'assets/css/wclon-admin.css', array( 'woocommerce_admin_styles' ), filemtime( WCLON_PLUGIN_DIR . 'assets/css/wclon-admin.css' ) );
 		// WordPress 內建色票選擇器（Iris），供 Flex Message 標題色欄位使用：比原生 <input type="color">
 		// 多一個可直接輸入/貼上色號的文字欄位，不用額外引入第三方函式庫或自己刻一個。
 		wp_enqueue_style( 'wp-color-picker' );
