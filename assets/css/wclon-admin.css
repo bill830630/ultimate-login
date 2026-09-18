@@ -15,13 +15,15 @@
 }
 
 .wclon-admin-header h1 {
-    margin: 0 0 4px;
+    margin: 0;
     padding: 0;
-    font-size: 21px;
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.35;
 }
 
 .wclon-admin-header p {
-    margin: 0;
+    margin: 4px 0 0;
     color: #646970;
     font-size: 13px;
 }
@@ -40,11 +42,11 @@
 .wclon-admin-wrap .nav-tab {
     float: none;
     margin: 0;
-    padding: 0 0 10px;
+    padding: 0 0 12px;
     border: 0;
     background: transparent;
     color: #50575e;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 500;
     line-height: 20px;
     text-decoration: none;
@@ -71,7 +73,7 @@
 /* ── 卡片 ── */
 .wclon-card {
     background: #fff;
-    border: 1px solid #c3c4c7;
+    border: 1px solid #dcdcde;
     border-radius: 0;
     padding: 20px;
     margin: 0 0 24px;
@@ -88,7 +90,8 @@
 .wclon-card__title {
     margin: 0 0 4px;
     padding: 0;
-    font-size: 15px;
+    font-size: 16px;
+    font-weight: 600;
     line-height: 1.4;
 }
 
@@ -100,6 +103,20 @@
     margin: 0 0 16px;
     color: #646970;
     font-size: 13px;
+    line-height: 1.5;
+}
+
+.wclon-card .description { font-size: 13px; line-height: 1.5; }
+
+/* 與 WooCommerce 設定頁相同的原生按鈕比例，沿用後台主題配色。 */
+.wclon-admin-wrap .button {
+    min-height: 30px;
+    padding: 0 10px;
+    border-radius: 3px;
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 2.15384615;
+    box-shadow: none;
 }
 
 .wclon-card .form-table {
@@ -488,11 +505,13 @@
 #wclon-main-submit {
     margin: 0 30px 40px;
 }
+#wclon-main-submit p.submit { margin: 0; padding: 0; }
 
 @media (max-width: 782px) {
     .wclon-admin-header { padding: 20px 16px 12px; }
     .wclon-admin-wrap .nav-tab-wrapper { padding: 0 16px; gap: 20px; overflow-x: auto; flex-wrap: nowrap; }
     .wclon-admin-wrap .nav-tab { flex: 0 0 auto; }
+    .wclon-admin-wrap .button { min-height: 40px; padding: 0 14px; font-size: 14px; }
     .wclon-admin-wrap #wclon-settings-form > .wclon-tab-pane,
     .wclon-admin-wrap > .wclon-tab-pane { padding: 20px 16px 0; }
     #wclon-main-submit { margin-left: 16px; margin-right: 16px; }
