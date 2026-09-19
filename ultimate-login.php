@@ -3,11 +3,12 @@
  * Plugin Name: Ultimate Login
  * Plugin URI:  https://example.com
  * Description: 讓顧客透過 LINE、Google、Apple 登入綁定帳號，並在 WooCommerce 訂單狀態變更時，透過 LINE Messaging API 自動推播訂單通知給顧客；同時可推播新訂單通知到管理員/員工共用的 LINE 群組或聊天室。
- * Version:     1.37.2
+ * Version:     1.37.3
  * Author:      NiBill
  * Text Domain: ultimate-login
  * Requires Plugins: woocommerce
  * Requires PHP: 8.0
+ * WC tested up to: 11.1
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -44,7 +45,7 @@ if ( defined( 'WCLON_VERSION' ) ) {
 	return;
 }
 
-define( 'WCLON_VERSION', '1.37.2' );
+define( 'WCLON_VERSION', '1.37.3' );
 define( 'WCLON_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WCLON_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 // 會員中心「帳號綁定」獨立頁面的 WC Account endpoint slug
@@ -376,5 +377,6 @@ if ( WCLON_Settings::module_enabled( 'social_login' ) ) {
 add_action( 'before_woocommerce_init', function () {
 	if ( class_exists( \Automattic\WooCommerce\Utilities\FeaturesUtil::class ) ) {
 		\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'custom_order_tables', __FILE__, true );
+		\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'cart_checkout_blocks', __FILE__, false );
 	}
 } );
