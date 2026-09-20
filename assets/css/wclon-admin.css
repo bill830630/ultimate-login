@@ -364,6 +364,9 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
+/* 顧客通知預覽的類型選單與訊息卡片保留清楚的垂直間距。 */
+#wclon_flex_preview_customer { margin-top: 16px; }
+
 /* box-sizing: border-box，否則 .wclon-flex-preview__btn 的 width:100% 只會計入內容寬度，
    自己的 padding 會另外疊加上去、撐破父層 footer 的右側內距，導致按鈕右邊貼齊卡片邊緣
    （左邊沒事，因為 footer 的左 padding 決定按鈕起點，右邊才是被撐出去的那一側）。 */
