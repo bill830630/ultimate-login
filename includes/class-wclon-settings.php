@@ -675,34 +675,44 @@ class WCLON_Settings {
 		// 不會出現「點得進去、填了勾選、按下儲存卻被告知權限不足」這種體驗。
 		$can_manage_modules = current_user_can( 'manage_options' );
 		$can_manage_license = current_user_can( 'manage_options' );
+		$tab_groups = array(
+			'general' => array( 'label' => '一般設定', 'tabs' => array( 'general' => '一般設定' ) ),
+		);
+		if ( $mod_social ) {
+			$tab_groups['social'] = array( 'label' => '社交登入', 'tabs' => array( 'line' => 'LINE', 'google' => 'Google', 'apple' => 'Apple' ) );
+		}
+		if ( $mod_notify ) {
+			$tab_groups['notifications'] = array( 'label' => '通知', 'tabs' => array( 'customer' => '顧客通知', 'adminline' => '管理員通知' ) );
+		}
+		$tab_groups['security'] = array( 'label' => '安全性', 'tabs' => array( 'turnstile' => 'Turnstile' ) );
+		$system_tabs = array();
+		if ( $can_manage_license ) $system_tabs['license'] = '授權';
+		if ( $mod_sysmail ) $system_tabs['sysmail'] = '系統信件';
+		if ( $can_manage_modules ) $system_tabs['modules'] = '模組';
+		if ( $system_tabs ) {
+			$tab_groups['system'] = array( 'label' => '系統設定', 'tabs' => $system_tabs );
+		}
 		?>
 		<div class="wrap wclon-admin-wrap">
 			<div class="wclon-admin-header">
 				<h1>終極登入</h1>
 			</div>
 
-			<nav class="nav-tab-wrapper" aria-label="終極登入設定">
-				<a href="#" class="nav-tab nav-tab-active" data-wclon-tab="general">一般設定</a>
-				<?php if ( $mod_social ) : ?>
-				<a href="#" class="nav-tab" data-wclon-tab="line">LINE</a>
-				<a href="#" class="nav-tab" data-wclon-tab="google">Google</a>
-				<a href="#" class="nav-tab" data-wclon-tab="apple">Apple</a>
-				<?php endif; ?>
-				<?php if ( $mod_notify ) : ?>
-				<a href="#" class="nav-tab" data-wclon-tab="customer">顧客通知</a>
-				<a href="#" class="nav-tab" data-wclon-tab="adminline">管理員通知</a>
-				<?php endif; ?>
-				<a href="#" class="nav-tab" data-wclon-tab="turnstile">Turnstile</a>
-				<?php if ( $can_manage_license ) : ?>
-				<a href="#" class="nav-tab" data-wclon-tab="license">授權</a>
-				<?php endif; ?>
-				<?php if ( $mod_sysmail ) : ?>
-				<a href="#" class="nav-tab" data-wclon-tab="sysmail">系統信件</a>
-				<?php endif; ?>
-				<?php if ( $can_manage_modules ) : ?>
-				<a href="#" class="nav-tab" data-wclon-tab="modules">模組</a>
-				<?php endif; ?>
+			<nav class="nav-tab-wrapper" aria-label="終極登入功能分類">
+				<?php foreach ( $tab_groups as $group_id => $group ) : $default_tab = array_key_first( $group['tabs'] ); ?>
+				<a href="#<?php echo esc_attr( $default_tab ); ?>" class="nav-tab<?php echo 'general' === $group_id ? ' nav-tab-active' : ''; ?>" data-wclon-group="<?php echo esc_attr( $group_id ); ?>" data-wclon-default-tab="<?php echo esc_attr( $default_tab ); ?>"><?php echo esc_html( $group['label'] ); ?></a>
+				<?php endforeach; ?>
 			</nav>
+
+			<?php foreach ( $tab_groups as $group_id => $group ) : ?>
+			<nav class="wclon-subtabs<?php echo count( $group['tabs'] ) < 2 ? ' is-single' : ''; ?>" data-wclon-subtabs="<?php echo esc_attr( $group_id ); ?>" aria-label="<?php echo esc_attr( $group['label'] ); ?>設定">
+				<ul class="subsubsub">
+					<?php foreach ( $group['tabs'] as $tab_id => $tab_label ) : ?>
+					<li><a href="#<?php echo esc_attr( $tab_id ); ?>" data-wclon-tab="<?php echo esc_attr( $tab_id ); ?>" data-wclon-tab-group="<?php echo esc_attr( $group_id ); ?>"><?php echo esc_html( $tab_label ); ?></a></li>
+					<?php endforeach; ?>
+				</ul>
+			</nav>
+			<?php endforeach; ?>
 
 			<?php WCLON_License::render_inline_notice(); ?>
 
@@ -1258,12 +1268,13 @@ class WCLON_Settings {
 		<script>
 		(function () {
 			// ── Tab 切換 ──
-			var tabs  = document.querySelectorAll('[data-wclon-tab]');
-			var panes = document.querySelectorAll('.wclon-tab-pane');
-			var tabList = document.querySelector('.wclon-admin-wrap > .nav-tab-wrapper');
+			var groupTabs = document.querySelectorAll('[data-wclon-group]');
+			var subtabs   = document.querySelectorAll('[data-wclon-tab]');
+			var subnavs   = document.querySelectorAll('[data-wclon-subtabs]');
+			var panes     = document.querySelectorAll('.wclon-tab-pane');
 
-			if (tabList) tabList.setAttribute('role', 'tablist');
-			tabs.forEach(function (tab) {
+			subnavs.forEach(function (nav) { nav.setAttribute('role', 'tablist'); });
+			subtabs.forEach(function (tab) {
 				var tabId = tab.dataset.wclonTab;
 				tab.id = 'wclon-tab-control-' + tabId;
 				tab.setAttribute('role', 'tab');
@@ -1273,65 +1284,108 @@ class WCLON_Settings {
 			panes.forEach(function (pane) {
 				pane.id = 'wclon-tab-' + pane.dataset.tab;
 				pane.setAttribute('role', 'tabpanel');
-				if (Array.prototype.some.call(tabs, function (tab) { return tab.dataset.wclonTab === pane.dataset.tab; })) {
+				if (Array.prototype.some.call(subtabs, function (tab) { return tab.dataset.wclonTab === pane.dataset.tab; })) {
 					pane.setAttribute('aria-labelledby', 'wclon-tab-control-' + pane.dataset.tab);
 				}
 			});
 
 			function showTab(tabId) {
+				var selected = Array.prototype.find.call(subtabs, function (tab) { return tab.dataset.wclonTab === tabId; });
+				if (!selected) return;
+				var groupId = selected.dataset.wclonTabGroup;
 				panes.forEach(function (p) {
 					var isActive = p.dataset.tab === tabId;
 					p.style.display = isActive ? '' : 'none';
 					p.hidden = !isActive;
 				});
-				tabs.forEach(function (t) {
+				subtabs.forEach(function (t) {
 					var isActive = t.dataset.wclonTab === tabId;
-					t.classList.toggle('nav-tab-active', isActive);
+					t.classList.toggle('current', isActive);
 					t.setAttribute('aria-selected', isActive ? 'true' : 'false');
 					t.setAttribute('tabindex', isActive ? '0' : '-1');
+				});
+				groupTabs.forEach(function (groupTab) {
+					var isActive = groupTab.dataset.wclonGroup === groupId;
+					groupTab.classList.toggle('nav-tab-active', isActive);
+					if (isActive) groupTab.setAttribute('aria-current', 'page');
+					else groupTab.removeAttribute('aria-current');
+				});
+				subnavs.forEach(function (nav) {
+					var isActive = nav.dataset.wclonSubtabs === groupId;
+					nav.style.display = isActive && !nav.classList.contains('is-single') ? 'block' : 'none';
 				});
 				var mainSubmit = document.getElementById('wclon-main-submit');
 				if (mainSubmit) mainSubmit.style.display = tabId === 'license' ? 'none' : '';
 				var licenseNotice = document.getElementById('wclon-license-inline-notice');
 				if (licenseNotice) licenseNotice.style.display = tabId === 'license' ? 'none' : '';
-				try { sessionStorage.setItem('wclon_active_tab', tabId); } catch (e) {}
+				try {
+					sessionStorage.setItem('wclon_active_tab', tabId);
+					sessionStorage.setItem('wclon_group_tab_' + groupId, tabId);
+				} catch (e) {}
 				if (window.history && window.history.replaceState) {
 					window.history.replaceState(null, '', '#' + tabId);
 				}
 			}
 
-			tabs.forEach(function (tab) {
+			subtabs.forEach(function (tab) {
 				tab.addEventListener('click', function (e) {
 					e.preventDefault();
 					showTab(this.dataset.wclonTab);
 				});
 			});
+			groupTabs.forEach(function (groupTab) {
+				groupTab.addEventListener('click', function (e) {
+					e.preventDefault();
+					var groupId = this.dataset.wclonGroup;
+					var savedTab = '';
+					try { savedTab = sessionStorage.getItem('wclon_group_tab_' + groupId) || ''; } catch (ignore) {}
+					var target = Array.prototype.find.call(subtabs, function (tab) {
+						return tab.dataset.wclonTabGroup === groupId && tab.dataset.wclonTab === savedTab;
+					});
+					showTab(target ? target.dataset.wclonTab : this.dataset.wclonDefaultTab);
+				});
+			});
+			groupTabs.forEach(function (groupTab, index) {
+				groupTab.addEventListener('keydown', function (e) {
+					var next = null;
+					if (e.key === 'ArrowRight') next = (index + 1) % groupTabs.length;
+					if (e.key === 'ArrowLeft') next = (index - 1 + groupTabs.length) % groupTabs.length;
+					if (e.key === 'Home') next = 0;
+					if (e.key === 'End') next = groupTabs.length - 1;
+					if (next === null) return;
+					e.preventDefault();
+					groupTabs[next].focus();
+					groupTabs[next].click();
+				});
+			});
 
 			// 採用 WordPress/WooCommerce 頁籤慣例：左右方向鍵在同一層頁籤間切換，Home/End
 			// 可直接移到首尾；Tab 鍵仍按欄位自然順序前進。
-			tabs.forEach(function (tab, index) {
+			subtabs.forEach(function (tab) {
 				tab.addEventListener('keydown', function (e) {
+					var sameGroup = Array.prototype.filter.call(subtabs, function (item) { return item.dataset.wclonTabGroup === tab.dataset.wclonTabGroup; });
+					var index = sameGroup.indexOf(tab);
 					var next = null;
-					if (e.key === 'ArrowRight') next = (index + 1) % tabs.length;
-					if (e.key === 'ArrowLeft') next = (index - 1 + tabs.length) % tabs.length;
+					if (e.key === 'ArrowRight') next = (index + 1) % sameGroup.length;
+					if (e.key === 'ArrowLeft') next = (index - 1 + sameGroup.length) % sameGroup.length;
 					if (e.key === 'Home') next = 0;
-					if (e.key === 'End') next = tabs.length - 1;
+					if (e.key === 'End') next = sameGroup.length - 1;
 					if (next === null) return;
 					e.preventDefault();
-					tabs[next].focus();
-					showTab(tabs[next].dataset.wclonTab);
+					sameGroup[next].focus();
+					showTab(sameGroup[next].dataset.wclonTab);
 				});
 			});
 
 			try {
 				var saved = window.location.hash.slice(1) || sessionStorage.getItem('wclon_active_tab');
 				// v1.36.0 起模組開關會讓部分頁籤整個不輸出（見 PHP 端 $mod_social／$mod_notify／
-				// $mod_sysmail），validTabs 因此改成直接從「實際渲染出來的 nav-tab」反推，不再寫死
+				// $mod_sysmail），validTabs 因此改成直接從「實際渲染出來的第二層頁籤」反推，不再寫死
 				// 固定清單——寫死的清單在模組被關閉、原本存在 sessionStorage 的舊 tab id 對應的
-				// nav-tab／pane 都不再輸出時，會導致所有 pane 都比對不到、整頁空白（v1.20.0／v1.23.0
+				// 子頁籤／pane 都不再輸出時，會導致所有 pane 都比對不到、整頁空白（v1.20.0／v1.23.0
 				// 拆頁籤/搬頁籤時就踩過同一種問題，這次用「從 DOM 反推」一次徹底解決，不用每次異動
 				// 頁籤清單都要記得同步改這裡）。
-				var validTabs = Array.prototype.map.call(tabs, function (t) { return t.dataset.wclonTab; });
+				var validTabs = Array.prototype.map.call(subtabs, function (t) { return t.dataset.wclonTab; });
 				showTab(saved && validTabs.indexOf(saved) !== -1 ? saved : 'general');
 			} catch (e) {}
 

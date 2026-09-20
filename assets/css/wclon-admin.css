@@ -70,6 +70,30 @@
     color: #1d2327;
 }
 
+/* 第二層功能頁籤比照 WooCommerce／終極電商的 subsubsub 文字導覽。 */
+.wclon-subtabs {
+    display: none;
+    margin: 0;
+    padding: 16px 30px 0;
+}
+.wclon-subtabs .subsubsub {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    float: none;
+    margin: 0;
+    padding: 0;
+    line-height: 26px;
+}
+.wclon-subtabs .subsubsub li { display: inline-flex; align-items: center; margin: 0; }
+.wclon-subtabs .subsubsub li:not(:last-child)::after {
+    content: "|";
+    margin: 0 5px;
+    color: #2271b1;
+}
+.wclon-subtabs .subsubsub a { padding: 0; line-height: 26px; text-decoration: none; }
+.wclon-subtabs .subsubsub a.current { color: #1d2327; font-weight: 600; }
+
 #wclon-license-inline-notice {
     margin: 24px 30px 0;
 }
@@ -110,6 +134,13 @@
     line-height: 1.5;
 }
 
+/* 設定頁只保留欄位名稱與操作回饋；隱藏卡片副標題及欄位補充說明。 */
+.wclon-admin-wrap .wclon-card__desc,
+.wclon-admin-wrap .wclon-card .description,
+.wclon-admin-wrap .wclon-module-desc {
+    display: none;
+}
+
 .wclon-card .form-table {
     margin-top: 0;
 }
@@ -138,6 +169,40 @@
     border-top: 1px solid #eee;
     margin: 22px 0;
 }
+
+/* 授權頁：狀態、授權資料與操作明確分區，窄螢幕自動改為單欄。 */
+.wclon-license-card { max-width: 860px; padding: 0; }
+.wclon-license-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 20px;
+    border-bottom: 1px solid #dcdcde;
+}
+.wclon-license-card__header h2 { margin: 0; font-size: 16px; line-height: 1.4; }
+.wclon-license-status {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 0 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+}
+.wclon-license-status.is-active { color: #06752e; background: #edfaef; }
+.wclon-license-status.is-grace { color: #7a4d00; background: #fcf3cf; }
+.wclon-license-status.is-inactive { color: #b32d2e; background: #fbeaea; }
+.wclon-license-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0; padding: 6px 20px; }
+.wclon-license-details > div { min-width: 0; padding: 14px 0; border-bottom: 1px solid #f0f0f1; }
+.wclon-license-details > div:nth-child(odd) { padding-right: 20px; }
+.wclon-license-details > div:nth-child(even) { padding-left: 20px; }
+.wclon-license-details dt { margin: 0 0 5px; color: #646970; font-size: 12px; }
+.wclon-license-details dd { margin: 0; overflow-wrap: anywhere; font-weight: 500; }
+.wclon-license-message { margin: 16px 20px 0; padding: 10px 12px; color: #b32d2e; background: #fbeaea; border-left: 4px solid #d63638; }
+.wclon-license-actions { margin-top: 6px; padding: 20px; border-top: 1px solid #dcdcde; }
+.wclon-license-actions form { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 0; }
+.wclon-license-actions .button { margin: 0; }
 
 /* ── 說明/前置作業提示框 ── */
 .wclon-callout {
@@ -494,12 +559,20 @@
     .wclon-admin-wrap .nav-tab-wrapper { padding: 9px 24px 0; gap: 24px; overflow-x: auto; flex-wrap: nowrap; }
     .wclon-admin-wrap .nav-tab { flex: 0 0 auto; margin: 10px 10px 0 0; }
     .wclon-admin-wrap .nav-tab.nav-tab-active { margin-bottom: 0; }
+    .wclon-subtabs { padding: 14px 30px 0; overflow-x: auto; }
+    .wclon-subtabs .subsubsub { flex-wrap: nowrap; white-space: nowrap; }
     .wclon-admin-wrap #wclon-settings-form > .wclon-tab-pane,
     .wclon-admin-wrap > .wclon-tab-pane { padding: 24px 30px 0; }
     #wclon-main-submit { margin-left: 30px; margin-right: 30px; }
     .wclon-card .form-table th,
     .wclon-card .form-table td { display: block; width: auto; padding-right: 0; }
     .wclon-card .form-table th { padding-bottom: 0; }
+    .wclon-license-details { grid-template-columns: minmax(0, 1fr); }
+    .wclon-license-details > div:nth-child(odd),
+    .wclon-license-details > div:nth-child(even) { padding-left: 0; padding-right: 0; }
+    .wclon-license-actions form { align-items: stretch; flex-direction: column; }
+    .wclon-license-actions .regular-text,
+    .wclon-license-actions .button { width: 100%; }
 }
 
 @media (max-width: 480px) {

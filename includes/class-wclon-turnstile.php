@@ -175,6 +175,9 @@ class WCLON_Turnstile {
 		$allowed_appearances  = array( 'always', 'interaction-only' );
 		$clean['appearance']  = in_array( $input['appearance'] ?? '', $allowed_appearances, true ) ? $input['appearance'] : 'always';
 
+		$allowed_unavailable_behaviors = array( 'allow', 'block' );
+		$clean['unavailable_behavior']  = in_array( $input['unavailable_behavior'] ?? '', $allowed_unavailable_behaviors, true ) ? $input['unavailable_behavior'] : 'allow';
+
 		$clean['error_message'] = sanitize_text_field( $input['error_message'] ?? '' ) ?: self::default_error_message();
 
 		return $clean;
@@ -326,23 +329,20 @@ class WCLON_Turnstile {
 			)
 		);
 
-		// 連不上 Cloudflare（DNS／防火牆／逾時）時一律放行並記錄——驗證服務的短暫故障
-		// 不應該讓整站沒有人能登入或註冊。真正無效的 token 仍然會被下面的 success 判斷擋下。
+		// 連不上 Cloudflare（DNS／防火牆／逾時）、非 200 或回應無法解析時，依後台設定
+		// 決定放行或阻擋。真正無效的 token 仍然會被下面的 success 判斷固定擋下。
 		if ( is_wp_error( $response ) ) {
-			self::log( 'siteverify 連線失敗，本次放行：' . $response->get_error_message() . ( $context ? " (context: {$context})" : '' ) );
-			return self::$verified[ $key ] = true;
+			return self::$verified[ $key ] = self::handle_unavailable( 'siteverify 連線失敗：' . $response->get_error_message(), $error, $context );
 		}
 
 		$code = wp_remote_retrieve_response_code( $response );
 		if ( 200 !== (int) $code ) {
-			self::log( 'siteverify 回應非 200（' . $code . '），本次放行' . ( $context ? " (context: {$context})" : '' ) );
-			return self::$verified[ $key ] = true;
+			return self::$verified[ $key ] = self::handle_unavailable( 'siteverify 回應非 200（' . $code . '）', $error, $context );
 		}
 
 		$body = json_decode( wp_remote_retrieve_body( $response ), true );
 		if ( ! is_array( $body ) ) {
-			self::log( 'siteverify 回應無法解析為 JSON，本次放行' . ( $context ? " (context: {$context})" : '' ) );
-			return self::$verified[ $key ] = true;
+			return self::$verified[ $key ] = self::handle_unavailable( 'siteverify 回應無法解析為 JSON', $error, $context );
 		}
 
 		if ( empty( $body['success'] ) ) {
@@ -354,6 +354,14 @@ class WCLON_Turnstile {
 		}
 
 		return self::$verified[ $key ] = true;
+	}
+
+	/** Cloudflare 驗證服務不可用時，依設定回傳放行或阻擋結果，兩種情況都寫入紀錄。 */
+	private static function handle_unavailable( $message, $error, $context = '' ) {
+		$should_block = 'block' === self::get( 'unavailable_behavior', 'allow' );
+		$action       = $should_block ? '本次阻擋' : '本次放行';
+		self::log( $message . '，' . $action . ( $context ? " (context: {$context})" : '' ) );
+		return $should_block ? $error : true;
 	}
 
 	private static function log( $message ) {
@@ -523,13 +531,14 @@ class WCLON_Turnstile {
 	// ─── 設定頁渲染（嵌入 WCLON_Settings 設定頁的「Turnstile」分頁，見該檔案 render_page()） ──
 
 	public static function render_tab_content() {
-		$enabled       = self::get( 'enabled' );
-		$site_key      = self::get( 'site_key' );
-		$secret_key    = self::get( 'secret_key' );
-		$theme         = self::get( 'theme', 'auto' );
-		$widget_size   = self::get( 'widget_size', 'normal' );
-		$appearance    = self::get( 'appearance', 'always' );
-		$error_message = self::get( 'error_message', self::default_error_message() );
+		$enabled              = self::get( 'enabled' );
+		$site_key             = self::get( 'site_key' );
+		$secret_key           = self::get( 'secret_key' );
+		$theme                = self::get( 'theme', 'auto' );
+		$widget_size          = self::get( 'widget_size', 'normal' );
+		$appearance           = self::get( 'appearance', 'always' );
+		$unavailable_behavior = self::get( 'unavailable_behavior', 'allow' );
+		$error_message        = self::get( 'error_message', self::default_error_message() );
 		?>
 		<form method="post" action="options.php" id="wclon-turnstile-settings-form">
 			<?php settings_fields( 'wclon_turnstile_settings_group' ); ?>
@@ -629,7 +638,17 @@ class WCLON_Turnstile {
 
 			<div class="wclon-card">
 				<h2 class="wclon-card__title">連線失敗時的行為</h2>
-				<p class="wclon-card__desc">Cloudflare 暫時無法連線時會放行並記錄錯誤；驗證明確失敗時仍會擋下。</p>
+				<table class="form-table">
+					<tr>
+						<th scope="row"><label for="wclon_turnstile_unavailable_behavior">驗證服務無法連線時</label></th>
+						<td>
+							<select id="wclon_turnstile_unavailable_behavior" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[unavailable_behavior]">
+								<option value="allow" <?php selected( $unavailable_behavior, 'allow' ); ?>>暫時放行（建議）</option>
+								<option value="block" <?php selected( $unavailable_behavior, 'block' ); ?>>阻擋請求</option>
+							</select>
+						</td>
+					</tr>
+				</table>
 			</div>
 		</form>
 		<?php

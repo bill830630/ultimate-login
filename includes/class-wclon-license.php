@@ -82,7 +82,15 @@ class WCLON_License {
 			'latest_version' => sanitize_text_field( $response['latest_version'] ?? '' ),
 			'error'          => $valid ? '' : self::error_message( $error ),
 		);
-		if ( $valid ) $data['last_success'] = $now;
+		if ( $valid ) {
+			$activation              = is_array( $response['activation'] ?? null ) ? $response['activation'] : array();
+			$data['last_success']    = $now;
+			$data['product_name']    = sanitize_text_field( $response['product_name'] ?? '' );
+			$data['max_activations'] = absint( $response['max_activations'] ?? 0 );
+			$data['site_url']        = esc_url_raw( $activation['site_url'] ?? '' );
+			$data['activated_at']    = sanitize_text_field( $activation['activated_at'] ?? '' );
+			$data['last_seen_at']    = sanitize_text_field( $activation['last_seen_at'] ?? '' );
+		}
 		if ( null !== $license_key ) $data['license_key'] = sanitize_text_field( $license_key );
 		return self::update( $data );
 	}
@@ -162,7 +170,26 @@ class WCLON_License {
 		if ( ! current_user_can( 'manage_options' ) ) return;
 		$data   = self::data();
 		$active = self::is_active();
+		$data   = self::data();
 		$status = $active ? ( 'grace' === ( $data['status'] ?? '' ) ? '離線寬限中' : '已啟用' ) : '未啟用';
+		$format_time = static function ( $value ) {
+			if ( empty( $value ) ) return '—';
+			$timestamp = is_numeric( $value ) ? (int) $value : strtotime( $value );
+			return $timestamp ? wp_date( 'Y-m-d H:i', $timestamp ) : (string) $value;
+		};
+		$license_key = preg_replace( '/[^A-Z0-9]/', '', strtoupper( (string) ( $data['license_key'] ?? '' ) ) );
+		$masked_key  = $license_key ? 'NIBILL-••••-' . substr( $license_key, -4 ) : '—';
+		$site_url    = $data['site_url'] ?? home_url();
+		$status_class = $active ? ( 'grace' === ( $data['status'] ?? '' ) ? 'is-grace' : 'is-active' ) : 'is-inactive';
+		$details = array(
+			'授權序號' => '<code>' . esc_html( $masked_key ) . '</code>',
+			'綁定網站' => esc_html( untrailingslashit( $site_url ) ),
+			'啟用時間' => esc_html( $format_time( $data['activated_at'] ?? '' ) ),
+			'最後驗證' => esc_html( $format_time( $data['last_seen_at'] ?? ( $data['last_checked'] ?? '' ) ) ),
+			'授權期限' => esc_html( empty( $data['expires_at'] ) ? '永久' : $format_time( $data['expires_at'] ) ),
+		);
+		if ( ! empty( $data['max_activations'] ) ) $details['網站授權上限'] = esc_html( number_format_i18n( (int) $data['max_activations'] ) ) . ' 個網站';
+		if ( 'grace' === ( $data['status'] ?? '' ) && ! empty( $data['last_success'] ) ) $details['離線寬限期限'] = esc_html( $format_time( (int) $data['last_success'] + self::GRACE_TTL ) );
 		$result = sanitize_key( $_GET['license_result'] ?? '' );
 		$messages = array(
 			'activated'   => array( 'success', '授權已啟用。' ),
@@ -175,13 +202,13 @@ class WCLON_License {
 		<?php if ( isset( $messages[ $result ] ) ) : ?>
 		<div class="notice notice-<?php echo esc_attr( $messages[ $result ][0] ); ?> inline"><p><?php echo esc_html( $messages[ $result ][1] ); ?></p></div>
 		<?php endif; ?>
-		<div class="wclon-card">
-			<h2 class="wclon-card__title">外掛授權</h2>
-			<p class="wclon-card__desc">授權綁定目前網站；驗證成功後會快取 24 小時，服務暫時中斷時保留 14 天離線寬限。</p>
-			<table class="form-table"><tr><th scope="row">授權狀態</th><td><strong><?php echo esc_html( $status ); ?></strong>
-			<?php if ( ! empty( $data['expires_at'] ) ) : ?><p class="description">到期時間：<?php echo esc_html( $data['expires_at'] ); ?></p><?php endif; ?>
-			<?php if ( ! empty( $data['error'] ) ) : ?><p class="description" style="color:#b32d2e;"><?php echo esc_html( $data['error'] ); ?></p><?php endif; ?>
-			</td></tr></table>
+		<div class="wclon-card wclon-license-card">
+			<div class="wclon-license-card__header"><h2>外掛授權</h2><span class="wclon-license-status <?php echo esc_attr( $status_class ); ?>"><?php echo esc_html( $status ); ?></span></div>
+			<dl class="wclon-license-details">
+				<?php foreach ( $details as $label => $value ) : ?><div><dt><?php echo esc_html( $label ); ?></dt><dd><?php echo $value; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- values are escaped when assembled. ?></dd></div><?php endforeach; ?>
+			</dl>
+			<?php if ( ! empty( $data['error'] ) ) : ?><div class="wclon-license-message"><?php echo esc_html( $data['error'] ); ?></div><?php endif; ?>
+			<div class="wclon-license-actions">
 			<?php if ( $active ) : ?>
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<input type="hidden" name="action" value="wclon_license_deactivate"><?php wp_nonce_field( 'wclon_license_deactivate' ); ?>
@@ -190,11 +217,12 @@ class WCLON_License {
 			<?php else : ?>
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<input type="hidden" name="action" value="wclon_license_activate"><?php wp_nonce_field( 'wclon_license_activate' ); ?>
-				<p><label for="wclon_license_key"><strong>授權金鑰</strong></label></p>
+				<label for="wclon_license_key" class="screen-reader-text">授權金鑰</label>
 				<input id="wclon_license_key" name="license_key" type="text" class="regular-text" autocomplete="off" placeholder="NIBILL-XXXXX-XXXXX-XXXXX-XXXXX" required>
 				<?php submit_button( '啟用授權', 'primary', 'submit', false ); ?>
 			</form>
 			<?php endif; ?>
+			</div>
 		</div>
 		<?php
 	}
