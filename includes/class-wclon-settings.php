@@ -674,6 +674,7 @@ class WCLON_Settings {
 		// 這裡額外控制的是「畫面看不看得到」——沒有 manage_options 的角色乾脆連頁籤都看不到，
 		// 不會出現「點得進去、填了勾選、按下儲存卻被告知權限不足」這種體驗。
 		$can_manage_modules = current_user_can( 'manage_options' );
+		$can_manage_license = current_user_can( 'manage_options' );
 		?>
 		<div class="wrap wclon-admin-wrap">
 			<div class="wclon-admin-header">
@@ -692,6 +693,9 @@ class WCLON_Settings {
 				<a href="#" class="nav-tab" data-wclon-tab="adminline">管理員通知</a>
 				<?php endif; ?>
 				<a href="#" class="nav-tab" data-wclon-tab="turnstile">Turnstile</a>
+				<?php if ( $can_manage_license ) : ?>
+				<a href="#" class="nav-tab" data-wclon-tab="license">授權</a>
+				<?php endif; ?>
 				<?php if ( $mod_sysmail ) : ?>
 				<a href="#" class="nav-tab" data-wclon-tab="sysmail">系統信件</a>
 				<?php endif; ?>
@@ -699,6 +703,8 @@ class WCLON_Settings {
 				<a href="#" class="nav-tab" data-wclon-tab="modules">模組</a>
 				<?php endif; ?>
 			</nav>
+
+			<?php WCLON_License::render_inline_notice(); ?>
 
 			<form method="post" action="options.php" id="wclon-settings-form">
 				<?php settings_fields( 'wclon_settings_group' ); ?>
@@ -1202,6 +1208,12 @@ class WCLON_Settings {
 				<?php WCLON_Turnstile::render_tab_content(); ?>
 			</div><!-- /wclon-tab-turnstile -->
 
+			<?php if ( $can_manage_license ) : ?>
+			<div class="wclon-admin-wrap wclon-tab-pane" data-tab="license" style="display:none;">
+				<?php WCLON_License::render_tab(); ?>
+			</div><!-- /wclon-tab-license -->
+			<?php endif; ?>
+
 			<?php if ( $mod_sysmail ) : ?>
 			<!-- ══ 系統信件 Tab（獨立 <form>／option） ══ -->
 			<div class="wclon-admin-wrap wclon-tab-pane" data-tab="sysmail" style="display:none;">
@@ -1278,6 +1290,10 @@ class WCLON_Settings {
 					t.setAttribute('aria-selected', isActive ? 'true' : 'false');
 					t.setAttribute('tabindex', isActive ? '0' : '-1');
 				});
+				var mainSubmit = document.getElementById('wclon-main-submit');
+				if (mainSubmit) mainSubmit.style.display = tabId === 'license' ? 'none' : '';
+				var licenseNotice = document.getElementById('wclon-license-inline-notice');
+				if (licenseNotice) licenseNotice.style.display = tabId === 'license' ? 'none' : '';
 				try { sessionStorage.setItem('wclon_active_tab', tabId); } catch (e) {}
 				if (window.history && window.history.replaceState) {
 					window.history.replaceState(null, '', '#' + tabId);

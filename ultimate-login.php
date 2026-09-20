@@ -3,7 +3,7 @@
  * Plugin Name: Ultimate Login
  * Plugin URI:  https://example.com
  * Description: 讓顧客透過 LINE、Google、Apple 登入綁定帳號，並在 WooCommerce 訂單狀態變更時，透過 LINE Messaging API 自動推播訂單通知給顧客；同時可推播新訂單通知到管理員/員工共用的 LINE 群組或聊天室。
- * Version:     1.37.3
+ * Version:     1.37.4
  * Author:      NiBill
  * Text Domain: ultimate-login
  * Requires Plugins: woocommerce
@@ -45,13 +45,14 @@ if ( defined( 'WCLON_VERSION' ) ) {
 	return;
 }
 
-define( 'WCLON_VERSION', '1.37.3' );
+define( 'WCLON_VERSION', '1.37.4' );
 define( 'WCLON_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WCLON_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 // 會員中心「帳號綁定」獨立頁面的 WC Account endpoint slug
 define( 'WCLON_ACCOUNT_ENDPOINT', 'social-login' );
 
 require_once WCLON_PLUGIN_DIR . 'includes/class-wclon-settings.php';
+require_once WCLON_PLUGIN_DIR . 'includes/class-wclon-license.php';
 require_once WCLON_PLUGIN_DIR . 'includes/class-wclon-line-login.php';
 require_once WCLON_PLUGIN_DIR . 'includes/class-wclon-google-login.php';
 require_once WCLON_PLUGIN_DIR . 'includes/class-wclon-apple-login.php';
@@ -75,6 +76,13 @@ add_action( 'plugins_loaded', function () {
 		return;
 	}
 	WCLON_Settings::init();
+	WCLON_License::init();
+	WCLON_Updater::init();
+
+	// 設定頁、授權處理與更新檢查保持可用；其餘功能需有效授權才載入。
+	if ( ! WCLON_License::is_active() ) {
+		return;
+	}
 
 	// 模組開關（v1.36.0 新增，仿效終極電商）：關閉的模組完全不呼叫對應 class 的 ::init()，
 	// 該模組的 hook 一個都不會註冊（不只是頁面上隱藏），效果比照終極電商。範圍分組見
@@ -95,7 +103,6 @@ add_action( 'plugins_loaded', function () {
 		WCLON_System_Email_Settings::init();
 	}
 	WCLON_Turnstile::init();
-	WCLON_Updater::init();
 
 	$wclon_mod_social = WCLON_Settings::module_enabled( 'social_login' );
 	$wclon_mod_notify = WCLON_Settings::module_enabled( 'order_notify' );

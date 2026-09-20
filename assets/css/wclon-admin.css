@@ -70,6 +70,10 @@
     color: #1d2327;
 }
 
+#wclon-license-inline-notice {
+    margin: 24px 30px 0;
+}
+
 /* ── 卡片 ── */
 .wclon-card {
     background: #fff;
