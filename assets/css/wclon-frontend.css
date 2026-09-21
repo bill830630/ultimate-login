@@ -184,70 +184,49 @@
 }
 
 /* ── 結帳頁精簡綁定列 ── */
-/* v1.31.3：外層包一個 .wclon-checkout-bar-group（render_social_bar() 統一輸出），兩塊的
-   外邊距收回來全部交給 group 的 gap 控制——原本各自的 margin-bottom + 相鄰負邊距是給「兩塊
-   各佔一整排、疊放」這個唯一版面準備的，改成桌機並排後那兩條規則的語意就不成立了（負
-   margin-top 在並排的 flex row 裡會把第二塊往上頂，跟第一塊對不齊），一起收掉換成 group
-   的 gap，兩種版面（疊放／並排）都只有一個間距來源。 */
+/* v1.38.0：綁定列改放進購物車右側欄／結帳頁訂單摘要，樣式比照終極電商的「點數／儲值金折抵」
+   區塊（.twshop-points-redemption）：無底色、無外框，只用下緣分隔線區隔；標題粗體、按鈕高度
+   跟主題表單元件一致，兩個區塊（LINE／Google+Apple）一律直排。 */
 .wclon-checkout-bar-group {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    margin: 0 0 20px;
+    display: block;
+    clear: both;
+    margin: 0 0 1em;
 }
 
 .wclon-checkout-bar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px 16px;
-    padding: 10px 14px;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    background: #fafafa;
+    display: block;
+    padding: 0 0 15px;
+    margin: 0 0 15px;
+    border: none;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    background: none;
 }
 
 .wclon-checkout-bar__label {
-    font-size: 13px;
-    color: #555;
+    display: block;
+    margin: 0 0 8px;
+    font-size: 15px;
+    font-weight: 600;
     line-height: 1.4;
-    white-space: nowrap;
+    color: inherit;
 }
 
 .wclon-checkout-bar__chips {
-    display: inline-flex;
+    display: flex;
     flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-}
-
-/* 螢幕夠寬時兩塊並排（不用 flex:1 撐開——box 本身沒內容可以填，撐開只會讓空白從「排在下面」
-   變成「同一塊裡面留白」，換湯不換藥；讓每塊維持自己的內容寬度，兩塊並排剩下的空間留在
-   最右邊即可，本來就是短短一行文字＋按鈕的東西，沒必要硬撐滿版）。
-   v1.31.4：斷點從 768px（桌機/平板）降到 480px，讓螢幕比較寬的手機（橫向、或本身較寬的
-   直向手機）也有機會並排，不用等到平板寬度才吃到這個版面。480px 只是「夠寬就試著並排」
-   的門檻，不是保證兩塊一定放得下——兩塊的文案可在後台自訂（`line_bar_title`／
-   `social_bar_title`），內容多長、480px 到底放不放得下，純 CSS 沒辦法精準預測。實際超過
-   480px、但兩塊加起來還是放不下的寬度區間，`flex-wrap: wrap` 會讓兩塊各自跳成一行、
-   維持自己的內容寬度（不會被撐滿，但也不會互相擠壓變形），效果類似小一號的疊放，
-   不是版面錯亂；等寬度真的夠了自然就會併回同一行，全程不需要 JS 或斷點以外的介入。
-   `align-items: flex-start` 是配合並排時用的（避免兩塊高度不同時被拉伸成一樣高），
-   跟兩塊還沒併起來、各自成行時的效果無關（那時候是 flex-wrap 換行，不是 align-items
-   在管）。 */
-@media ( min-width: 480px ) {
-    .wclon-checkout-bar-group {
-        flex-direction: row;
-        flex-wrap: wrap;
-        align-items: flex-start;
-    }
+    align-items: stretch;
+    gap: 10px;
 }
 
 .wclon-chip {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
+    flex: 1 1 120px;
     gap: 6px;
-    padding: 6px 12px;
-    font-size: 13px;
+    min-height: var(--theme-form-field-height, 40px);
+    padding: 0 14px;
+    font-size: 14px;
     font-weight: 600;
     line-height: 1;
     text-decoration: none;

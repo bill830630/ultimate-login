@@ -3,7 +3,7 @@
  * Plugin Name: Ultimate Login
  * Plugin URI:  https://example.com
  * Description: 讓顧客透過 LINE、Google、Apple 登入綁定帳號，並在 WooCommerce 訂單狀態變更時，透過 LINE Messaging API 自動推播訂單通知給顧客；同時可推播新訂單通知到管理員/員工共用的 LINE 群組或聊天室。
- * Version:     1.37.8
+ * Version:     1.38.0
  * Author:      NiBill
  * Text Domain: ultimate-login
  * Requires Plugins: woocommerce
@@ -45,7 +45,7 @@ if ( defined( 'WCLON_VERSION' ) ) {
 	return;
 }
 
-define( 'WCLON_VERSION', '1.37.8' );
+define( 'WCLON_VERSION', '1.38.0' );
 define( 'WCLON_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WCLON_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 // 會員中心「帳號綁定」獨立頁面的 WC Account endpoint slug
@@ -251,7 +251,7 @@ add_action( 'plugins_loaded', function () {
 	// wrapper markup 與標籤字串跟 render_social_bar() 裡的一模一樣、各寫一份。拆成兩區後若沿用
 	// 那套，會變成八個要彼此對齊的 priority 散在主檔案與三個 class 裡；改成直接呼叫同一個
 	// 渲染器之後，結帳頁／購物車頁／短代碼三條路徑走的是完全相同的程式碼。
-	add_action( 'woocommerce_before_checkout_form', function () {
+	add_action( 'woocommerce_checkout_before_order_review', function () {
 		if ( ! WCLON_Settings::get( 'show_on_checkout', 1 ) ) {
 			return;
 		}
@@ -260,12 +260,12 @@ add_action( 'plugins_loaded', function () {
 
 	// 傳統短代碼版購物車頁（[woocommerce_cart]）綁定列：與結帳頁共用 render_social_bar() 輸出，
 	// chip 用 $_SERVER['REQUEST_URI'] 當導回目標，完成 OAuth 後留在購物車頁
-	add_action( 'woocommerce_before_cart', function () {
+	add_action( 'woocommerce_before_cart_totals', function () {
 		if ( ! WCLON_Settings::get( 'show_on_cart', 0 ) ) {
 			return;
 		}
 		echo WCLON_Settings::render_social_bar(); // phpcs:ignore WordPress.Security.EscapeOutput
-	} );
+	}, 25 ); // 25：排在終極電商的點數(10)／儲值金(15)／優惠券(20)區塊之後
 
 	// 結帳頁綁定列有顯示時，隱藏 WC 原生「老客戶？點擊登入」提示（改由社交按鈕提供登入 / 註冊入口）。
 	//
