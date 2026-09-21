@@ -231,7 +231,7 @@
     min-height: var(--theme-form-field-height, 40px);
     padding: 0 14px;
     font-size: inherit;
-    font-weight: inherit;
+    font-weight: bold;
     line-height: 1;
     text-decoration: none;
     border: 1px solid transparent;
@@ -403,7 +403,7 @@
     gap: 10px;
     padding: 10px 18px;
     text-decoration: none;
-    font-weight: inherit;
+    font-weight: bold;
     transition: background 0.15s, color 0.15s, border-color 0.15s;
     box-sizing: border-box;
     border: 2px solid transparent;
@@ -417,7 +417,7 @@
     gap: 10px;
     padding: 11px 18px;
     text-decoration: none;
-    font-weight: inherit;
+    font-weight: bold;
     font-size: inherit;
     width: 100%;
     transition: background 0.15s, color 0.15s, border-color 0.15s;
