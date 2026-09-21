@@ -4,7 +4,7 @@
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 class WCLON_License {
-	const API_URL    = 'https://nibill-license-api.bill830630.workers.dev';
+	const API_URL    = 'https://ctrla.bill830630.workers.dev';
 	const PRODUCT_ID = 'ultimate-login';
 	const OPTION_KEY = 'wclon_license';
 	const CACHE_TTL  = DAY_IN_SECONDS;
@@ -177,8 +177,8 @@ class WCLON_License {
 			$timestamp = is_numeric( $value ) ? (int) $value : strtotime( $value );
 			return $timestamp ? wp_date( 'Y-m-d H:i', $timestamp ) : (string) $value;
 		};
-		$license_key = preg_replace( '/[^A-Z0-9]/', '', strtoupper( (string) ( $data['license_key'] ?? '' ) ) );
-		$masked_key  = $license_key ? 'NIBILL-••••-' . substr( $license_key, -4 ) : '—';
+		$license_key = preg_replace( '/[^A-Z0-9-]/', '', strtoupper( (string) ( $data['license_key'] ?? '' ) ) );
+		$masked_key  = $license_key ? ( 0 === strpos( $license_key, 'CTRLA-' ) ? 'CTRLA' : 'NIBILL' ) . '-••••-' . substr( $license_key, -4 ) : '—';
 		$site_url    = $data['site_url'] ?? home_url();
 		$status_class = $active ? ( 'grace' === ( $data['status'] ?? '' ) ? 'is-grace' : 'is-active' ) : 'is-inactive';
 		$details = array(
@@ -218,7 +218,7 @@ class WCLON_License {
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<input type="hidden" name="action" value="wclon_license_activate"><?php wp_nonce_field( 'wclon_license_activate' ); ?>
 				<label for="wclon_license_key" class="screen-reader-text">授權金鑰</label>
-				<input id="wclon_license_key" name="license_key" type="text" class="regular-text" autocomplete="off" placeholder="NIBILL-XXXXX-XXXXX-XXXXX-XXXXX" required>
+				<input id="wclon_license_key" name="license_key" type="text" class="regular-text" autocomplete="off" placeholder="CTRLA-XXXXX-XXXXX-XXXXX-XXXXX" required>
 				<?php submit_button( '啟用授權', 'primary', 'submit', false ); ?>
 			</form>
 			<?php endif; ?>
