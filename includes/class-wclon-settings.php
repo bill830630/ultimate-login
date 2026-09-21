@@ -1274,6 +1274,11 @@ class WCLON_Settings {
 			var panes     = document.querySelectorAll('.wclon-tab-pane');
 
 			subnavs.forEach(function (nav) { nav.setAttribute('role', 'tablist'); });
+			// 同頁通知連結只會改變 hash，不會重新載入設定頁。
+			window.addEventListener('hashchange', function () {
+				showTab(window.location.hash.slice(1));
+			});
+
 			subtabs.forEach(function (tab) {
 				var tabId = tab.dataset.wclonTab;
 				tab.id = 'wclon-tab-control-' + tabId;
