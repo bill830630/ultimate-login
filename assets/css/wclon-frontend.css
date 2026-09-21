@@ -58,14 +58,13 @@
 /* ── 綁定狀態區塊（短代碼完整版）── */
 .wclon-connect-box {
     margin: 0 0 20px;
-    padding: 14px 16px;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    background: #fafafa;
+    padding: 0;
+    border: none;
+    background: none;
 }
 
 .wclon-connected-status {
-    font-weight: bold;
+    font-weight: inherit;
     display: inline-flex;
     align-items: center;
     gap: 5px;
@@ -76,17 +75,17 @@
 }
 
 .wclon-connected-status--google {
-    color: #1f1f1f;
+    color: inherit;
 }
 
 .wclon-connected-status--apple {
-    color: #1d1d1f;
+    color: inherit;
 }
 
 .wclon-section-title {
-    font-size: 16px;
-    font-weight: 600;
-    color: #333;
+    font-size: inherit;
+    font-weight: inherit;
+    color: inherit;
     margin: 28px 0 12px;
     padding-top: 24px;
     border-top: 1px solid #e0e0e0;
@@ -110,8 +109,8 @@
 }
 
 .wclon-ios-label {
-    font-size: 14px;
-    color: #333;
+    font-size: inherit;
+    color: inherit;
 }
 
 .wclon-ios-row--action {
@@ -136,7 +135,7 @@
 }
 
 .wclon-notify-toggle--on .wclon-notify-toggle__track {
-    background: #00c300;
+    background: var(--theme-palette-color-1, #2271b1);
 }
 
 .wclon-notify-toggle__thumb {
@@ -157,30 +156,35 @@
 
 /* 解除綁定：純文字連結，不用按鈕外觀 */
 .wclon-unlink-text {
-    font-size: 13px;
-    color: #999;
+    font-size: inherit;
+    color: inherit;
     text-decoration: underline;
     flex-shrink: 0;
+    opacity: 0.7;
 }
 .wclon-unlink-text:hover {
     color: #b91c1c;
+    opacity: 1;
 }
 
 /* 綁定帳號：純文字連結，與解除綁定同排版但不帶警示色（非破壞性動作） */
 .wclon-link-text {
-    font-size: 13px;
-    color: #999;
+    font-size: inherit;
+    color: inherit;
     text-decoration: underline;
     flex-shrink: 0;
+    opacity: 0.7;
 }
 .wclon-link-text:hover {
-    color: #333;
+    color: inherit;
+    opacity: 1;
 }
 
 .wclon-connect-hint {
     margin-top: 6px;
-    color: #777;
-    font-size: 13px;
+    color: inherit;
+    font-size: inherit;
+    opacity: 0.7;
 }
 
 /* ── 結帳頁精簡綁定列 ── */
@@ -205,8 +209,8 @@
 .wclon-checkout-bar__label {
     display: block;
     margin: 0 0 8px;
-    font-size: 15px;
-    font-weight: 600;
+    font-size: inherit;
+    font-weight: inherit;
     line-height: 1.4;
     color: inherit;
 }
@@ -226,8 +230,8 @@
     gap: 6px;
     min-height: var(--theme-form-field-height, 40px);
     padding: 0 14px;
-    font-size: 14px;
-    font-weight: 600;
+    font-size: inherit;
+    font-weight: inherit;
     line-height: 1;
     text-decoration: none;
     border: 1px solid transparent;
@@ -284,17 +288,15 @@
 /* ── 帳戶詳細資料頁：社交帳號綁定 / 通知設定，各平台 / 各設定獨立一行 ── */
 .wclon-account-social,
 .wclon-account-notify {
-    margin: 0 0 24px;
-    padding: 14px 16px;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    background: #fafafa;
+    margin: 0 0 2em;
+    padding: 0;
+    border: none;
+    background: none;
 }
 
+/* 區塊標題是 <h3>，字型／字級／字重／顏色全部交給主題的標題樣式，這裡只清掉邊距 */
 .wclon-account-social__label {
     margin: 0 0 10px;
-    font-size: 13px;
-    color: #555;
 }
 
 .wclon-account-social__rows {
@@ -307,8 +309,8 @@
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-    padding: 8px 0;
-    border-top: 1px solid #ebebeb;
+    padding: 12px 0;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .wclon-account-social__row:first-child {
@@ -317,8 +319,8 @@
 }
 
 .wclon-account-social__row-label {
-    font-size: 13px;
-    color: #333;
+    font-size: inherit;
+    color: inherit;
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -344,9 +346,10 @@
 }
 
 .wclon-divider span {
-    color: #aaa;
-    font-size: 12px;
+    color: inherit;
+    font-size: inherit;
     white-space: nowrap;
+    opacity: 0.7;
 }
 
 /* 社交登入按鈕 flex 橫排（空間不足時自動折行） */
@@ -400,7 +403,7 @@
     gap: 10px;
     padding: 10px 18px;
     text-decoration: none;
-    font-weight: bold;
+    font-weight: inherit;
     transition: background 0.15s, color 0.15s, border-color 0.15s;
     box-sizing: border-box;
     border: 2px solid transparent;
@@ -414,8 +417,8 @@
     gap: 10px;
     padding: 11px 18px;
     text-decoration: none;
-    font-weight: bold;
-    font-size: 15px;
+    font-weight: inherit;
+    font-size: inherit;
     width: 100%;
     transition: background 0.15s, color 0.15s, border-color 0.15s;
     box-sizing: border-box;

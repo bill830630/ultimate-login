@@ -3,7 +3,7 @@
  * Plugin Name: Ultimate Login
  * Plugin URI:  https://example.com
  * Description: 讓顧客透過 LINE、Google、Apple 登入綁定帳號，並在 WooCommerce 訂單狀態變更時，透過 LINE Messaging API 自動推播訂單通知給顧客；同時可推播新訂單通知到管理員/員工共用的 LINE 群組或聊天室。
- * Version:     1.38.0
+ * Version:     1.38.1
  * Author:      NiBill
  * Text Domain: ultimate-login
  * Requires Plugins: woocommerce
@@ -45,7 +45,7 @@ if ( defined( 'WCLON_VERSION' ) ) {
 	return;
 }
 
-define( 'WCLON_VERSION', '1.38.0' );
+define( 'WCLON_VERSION', '1.38.1' );
 define( 'WCLON_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WCLON_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 // 會員中心「帳號綁定」獨立頁面的 WC Account endpoint slug
@@ -338,7 +338,7 @@ add_action( 'plugins_loaded', function () {
 			echo '<p>' . esc_html__( '目前尚未開放社群帳號綁定。', 'ultimate-login' ) . '</p>';
 			return;
 		}
-		echo '<div class="wclon-account-social"><p class="wclon-account-social__label">綁定帳號</p><div class="wclon-account-social__rows">';
+		echo '<div class="wclon-account-social"><h3 class="wclon-account-social__label">綁定帳號</h3><div class="wclon-account-social__rows">';
 	}, 9 );
 	add_action( 'woocommerce_account_' . WCLON_ACCOUNT_ENDPOINT . '_endpoint', function () use ( $wclon_account_social_enabled ) {
 		if ( ! $wclon_account_social_enabled() ) {
@@ -349,7 +349,7 @@ add_action( 'plugins_loaded', function () {
 
 	// 「帳號綁定」頁面內容：通知設定區塊（LINE 訂單通知僅已綁定 LINE 時顯示 priority 41，Email 訂單通知 priority 42），與上方社交帳號綁定區塊各自獨立
 	add_action( 'woocommerce_account_' . WCLON_ACCOUNT_ENDPOINT . '_endpoint', function () {
-		echo '<div class="wclon-account-notify"><p class="wclon-account-social__label">通知設定</p><div class="wclon-account-social__rows">';
+		echo '<div class="wclon-account-notify"><h3 class="wclon-account-social__label">通知設定</h3><div class="wclon-account-social__rows">';
 	}, 40 );
 	add_action( 'woocommerce_account_' . WCLON_ACCOUNT_ENDPOINT . '_endpoint', function () {
 		echo '</div></div>';
