@@ -1383,7 +1383,9 @@ class WCLON_Settings {
 			});
 
 			try {
-				var saved = window.location.hash.slice(1) || sessionStorage.getItem('wclon_active_tab');
+				var justSaved = /[?&]settings-updated=/.test(window.location.search);
+					// 只有「儲存設定後被導回」才還原上次停留的頁籤；從後台側邊選單點進來一律回到預設頁籤。
+					var saved = window.location.hash.slice(1) || (justSaved ? sessionStorage.getItem('wclon_active_tab') : '');
 				// v1.36.0 起模組開關會讓部分頁籤整個不輸出（見 PHP 端 $mod_social／$mod_notify／
 				// $mod_sysmail），validTabs 因此改成直接從「實際渲染出來的第二層頁籤」反推，不再寫死
 				// 固定清單——寫死的清單在模組被關閉、原本存在 sessionStorage 的舊 tab id 對應的
