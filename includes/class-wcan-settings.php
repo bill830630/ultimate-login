@@ -95,6 +95,7 @@ class WCAN_Settings {
 	public static function sanitize( $input ) {
 		$clean                             = array();
 		$clean['enabled']                  = ! empty( $input['enabled'] ) ? 1 : 0;
+		$clean['form_notify_enabled']      = ! empty( $input['form_notify_enabled'] ) ? 1 : 0;
 		$clean['messaging_channel_secret'] = trim( sanitize_text_field( $input['messaging_channel_secret'] ?? '' ) );
 		$clean['group_ids']                = self::parse_id_list( $input['group_ids'] ?? '' );
 
@@ -201,13 +202,20 @@ class WCAN_Settings {
 
 			<div class="wclon-card">
 				<h2 class="wclon-card__title">啟用與憑證</h2>
-				<p class="wclon-card__desc">新訂單推播給店家/員工共用的 LINE 群組。</p>
+				<p class="wclon-card__desc">新訂單與網站表單推播給店家/員工共用的 LINE 群組。</p>
 				<table class="form-table">
 					<tr>
 						<th scope="row">啟用管理員群組通知</th>
 						<td>
 							<label><input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[enabled]" value="1" <?php checked( self::get( 'enabled', 1 ), 1 ); ?>> 有新訂單時推播到下方已記錄的 LINE 群組/聊天室</label>
 							<p class="description">關閉後即使有已記錄的群組/聊天室，也不會推播新訂單通知；Webhook 擷取群組 ID 的功能不受影響。</p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row">網站表單通知</th>
+						<td>
+							<label><input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[form_notify_enabled]" value="1" <?php checked( self::get( 'form_notify_enabled', 0 ), 1 ); ?>> 有人送出網站表單時推播表單內容到下方已記錄的 LINE 群組/聊天室</label>
+							<p class="description">支援 Elementor Pro、Contact Form 7、Fluent Forms 的所有表單；每次送出都會計入官方帳號的訊息額度。</p>
 						</td>
 					</tr>
 					<tr>
@@ -218,7 +226,7 @@ class WCAN_Settings {
 						</td>
 					</tr>
 					<tr>
-						<th scope="row"><label for="wcan_title">推播標題</label></th>
+						<th scope="row"><label for="wcan_title">新訂單推播標題</label></th>
 						<td><input type="text" id="wcan_title" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[title]" value="<?php echo esc_attr( $title ); ?>" class="regular-text" placeholder="🔔 新訂單通知"></td>
 					</tr>
 					<tr>

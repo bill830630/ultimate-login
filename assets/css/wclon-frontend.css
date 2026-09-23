@@ -491,30 +491,5 @@
     min-width: 0;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   Cloudflare Turnstile widget（v1.24.0）
-   ══════════════════════════════════════════════════════════════ */
-
-/* 容器插在表單欄位之間（wp-login.php 的密碼欄之後、WooCommerce 的送出按鈕之前），
-   本身沒有寬高，widget 的 iframe 由 Cloudflare 依 data-size 決定尺寸。
-   clear:both 是為了 WooCommerce 我的帳號那種左右分欄的表單版型不被浮動元素卡住。 */
-.wclon-turnstile {
-    clear: both;
-    margin: 0 0 16px;
-}
-
-/* size=flexible 時 Cloudflare 會讓 widget 撐滿容器寬度，這裡確保容器本身也是滿版 */
-.wclon-turnstile[data-size="flexible"] {
-    width: 100%;
-}
-
-/* wp-login.php 的表單有自己的間距節奏，稍微收一點避免跟登入按鈕離太遠 */
-body.login .wclon-turnstile {
-    margin: 0 0 12px;
-}
-
-/* Elementor 表單：欄位之間的間距由 Elementor 自己的 .elementor-field-group 控制，
-   容器再帶自己的下邊距會變成雙重間距 */
-.elementor-field .wclon-turnstile {
-    margin-bottom: 0;
-}
+/* Cloudflare Turnstile 容器樣式 v1.41.0 起改由 WCLON_Turnstile::enqueue_assets() 以內嵌樣式輸出，
+   社交登入模組關閉（本檔不載入）時仍然有效。 */

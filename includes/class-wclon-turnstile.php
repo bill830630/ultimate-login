@@ -27,12 +27,8 @@ class WCLON_Turnstile {
 	const API_HANDLE = 'wclon-turnstile-api';
 
 	/**
-	 * Elementor Pro 表單的自訂欄位型別 key（v1.28.0 新增）。
-	 *
-	 * Elementor Pro 到目前為止都沒有內建 Turnstile（只有 reCAPTCHA v2/v3 與 hCaptcha），
-	 * 但它有正式的擴充 API：`elementor_pro/forms/field_types` 註冊型別、
-	 * `elementor_pro/forms/render_field/{type}` 輸出欄位、`elementor_pro/forms/validation`
-	 * 做後端驗證。這個字串同時是三個 hook 的共同 key，改動要三處一起改。
+	 * v1.28.0～v1.40.x 的 Elementor 自訂欄位型別 key。v1.41.0 起改成所有表單自動加入，
+	 * 這個型別不再註冊；只留常數用來把舊表單裡殘留的這個欄位從送出記錄移除。
 	 */
 	const ELEMENTOR_FIELD_TYPE = 'wclon_turnstile';
 
@@ -92,19 +88,14 @@ class WCLON_Turnstile {
 			add_filter( 'preprocess_comment', array( __CLASS__, 'verify_comment' ), 10, 1 );
 		}
 
-		// Elementor Pro 表單（v1.28.0 新增）。跟上面四種表單的模型不同：**不是**「開關一開就
-		// 自動套用到所有表單」，而是註冊成一種欄位型別，由站台自己在 Elementor 編輯器裡挑要
-		// 保護的表單、把「Cloudflare Turnstile」欄位加進去（做法與 Elementor 內建的 reCAPTCHA
-		// 完全一致）。沒有加這個欄位的表單完全不受影響——validation 那一支第一件事就是查
-		// 這次送出的表單有沒有這個欄位，沒有就直接 return。
-		//
-		// 這三個 hook 只有裝了 Elementor Pro 才會有人觸發，沒裝時掛著也不會有任何作用，
-		// 所以不需要 class_exists() 之類的偵測（Elementor 是在 plugins_loaded 之後才註冊
-		// 這些 hook 的，用偵測反而要處理載入順序問題）。
-		if ( self::get( 'protect_elementor_form', 1 ) ) {
-			add_filter( 'elementor_pro/forms/field_types', array( __CLASS__, 'register_elementor_field_type' ) );
-			add_action( 'elementor_pro/forms/render_field/' . self::ELEMENTOR_FIELD_TYPE, array( __CLASS__, 'render_elementor_field' ), 10, 3 );
+		// 網站表單（v1.41.0 起）：Elementor Pro、Contact Form 7、Fluent Forms 的所有表單自動加入。
+		// widget 由 wclon-turnstile.js 插在各外掛的送出按鈕前（三家的表單都可能由 AJAX／彈窗晚點
+		// 才進 DOM，前端插入比各外掛的渲染 hook 可靠），後端在各自的驗證點把關。這些 hook 只有裝了
+		// 對應外掛才會有人觸發，沒裝時掛著沒有作用，不需要 class_exists() 偵測。
+		if ( self::protect_forms() ) {
 			add_action( 'elementor_pro/forms/validation', array( __CLASS__, 'verify_elementor_form' ), 10, 2 );
+			add_filter( 'wpcf7_spam', array( __CLASS__, 'verify_cf7' ), 9, 2 );
+			add_filter( 'fluentform/validation_errors', array( __CLASS__, 'verify_fluentform' ), 10, 3 );
 		}
 
 		// ── 後端驗證 ──
@@ -146,6 +137,11 @@ class WCLON_Turnstile {
 		return ( $value !== null && $value !== '' ) ? $value : $default;
 	}
 
+	/** 是否自動保護網站表單；沒存過新欄位的站台沿用 v1.40 以前 Elementor 開關的值 */
+	public static function protect_forms() {
+		return (bool) self::get( 'protect_forms', self::get( 'protect_elementor_form', 1 ) );
+	}
+
 	/** 總開關開啟且兩把金鑰都填了才算真的啟用 */
 	public static function is_active() {
 		return (bool) self::get( 'enabled' ) && self::get( 'site_key' ) && self::get( 'secret_key' );
@@ -165,7 +161,7 @@ class WCLON_Turnstile {
 		$clean['protect_register']     = ! empty( $input['protect_register'] ) ? 1 : 0;
 		$clean['protect_lostpassword'] = ! empty( $input['protect_lostpassword'] ) ? 1 : 0;
 		$clean['protect_comment']      = ! empty( $input['protect_comment'] ) ? 1 : 0;
-		$clean['protect_elementor_form'] = ! empty( $input['protect_elementor_form'] ) ? 1 : 0;
+		$clean['protect_forms']        = ! empty( $input['protect_forms'] ) ? 1 : 0;
 
 		$allowed_themes  = array( 'auto', 'light', 'dark' );
 		$clean['theme']  = in_array( $input['theme'] ?? '', $allowed_themes, true ) ? $input['theme'] : 'auto';
@@ -206,6 +202,21 @@ class WCLON_Turnstile {
 			WCLON_VERSION,
 			false
 		);
+		// 容器樣式獨立輸出，不依賴只在社交登入模組啟用時才載入的 wclon-frontend.css。
+		// clear:both 避免 WooCommerce 我的帳號左右分欄版型的浮動元素；flexible 時容器也要滿版；
+		// wp-login.php 與 Elementor 表單各自有欄位間距（Elementor 的欄位群組自帶間距，收掉容器的下邊距），Fluent 比照它欄位群組的 20px。
+		wp_register_style( 'wclon-turnstile', false, array(), WCLON_VERSION );
+		wp_enqueue_style( 'wclon-turnstile' );
+		wp_add_inline_style( 'wclon-turnstile', '.wclon-turnstile{clear:both;margin:0 0 16px}.wclon-turnstile[data-size="flexible"]{width:100%}body.login .wclon-turnstile{margin:0 0 12px}.wclon-turnstile-field .wclon-turnstile{margin-bottom:0}.frm-fluent-form .wclon-turnstile{margin:0 0 20px}' );
+
+		// 網站表單的 widget 由前端插入，參數跟 render_widget() 輸出的 data-* 相同
+		wp_localize_script( 'wclon-turnstile', 'wclonTurnstile', array(
+			'forms'      => self::protect_forms() ? 1 : 0,
+			'sitekey'    => self::get( 'site_key' ),
+			'theme'      => self::get( 'theme', 'auto' ),
+			'size'       => self::get( 'widget_size', 'normal' ),
+			'appearance' => self::get( 'appearance', 'always' ),
+		) );
 		// render=explicit：不讓 api.js 自己掃 DOM，全部交給 wclon-turnstile.js 用 turnstile.render()
 		// 處理——Blocksy 彈窗送出失敗時整段表單 HTML 會被 AJAX 換掉，隱式渲染只在載入當下掃一次，
 		// 換進來的新表單不會有 widget。
@@ -302,8 +313,8 @@ class WCLON_Turnstile {
 	 *
 	 * @return true|WP_Error 通過回傳 true，未通過回傳帶有設定頁自訂訊息的 WP_Error。
 	 */
-	public static function verify_request( $context = '' ) {
-		$token = self::get_token();
+	public static function verify_request( $context = '', $token = null ) {
+		$token = null === $token ? self::get_token() : trim( (string) $token );
 		$error = new WP_Error( 'wclon_turnstile_failed', self::get( 'error_message', self::default_error_message() ) );
 
 		if ( '' === $token ) {
@@ -458,74 +469,84 @@ class WCLON_Turnstile {
 		}
 	}
 
-	// ─── Elementor Pro 表單（v1.28.0 新增） ─────────────────────────────────
+	// ─── 網站表單（v1.41.0 起自動套用） ─────────────────────────────────────
 
 	/**
-	 * 把「Cloudflare Turnstile」加進 Elementor 表單 widget 的欄位型別下拉選單。
+	 * Elementor Pro 表單（`elementor_pro/forms/validation`）。所有表單都驗證。
 	 *
-	 * 刻意用 filter + `render_field/{type}` action 這組較低階的 API，而不是繼承
-	 * `ElementorPro\Modules\Forms\Fields\Field_Base`：繼承的話這個檔案在被 require 的當下
-	 * （plugins_loaded，早於 Elementor 註冊自己的 autoload）就必須找得到那個父類別，
-	 * 沒裝 Elementor Pro 的站台會直接 fatal error。用 hook 就完全沒有這個相依問題。
-	 */
-	public static function register_elementor_field_type( $field_types ) {
-		$field_types[ self::ELEMENTOR_FIELD_TYPE ] = 'Cloudflare Turnstile';
-		return $field_types;
-	}
-
-	/**
-	 * 輸出 Elementor 表單裡的 Turnstile 欄位。
-	 *
-	 * 外層包一層 Elementor 自己的 `.elementor-field` + `form-field-{custom_id}`，讓它跟其他
-	 * 欄位共用同一套版面（欄寬、間距）；裡面就是本外掛四種表單共用的那個容器，實際渲染一樣
-	 * 交給 assets/js/wclon-turnstile.js（它監看整份 DOM，Elementor 何時把表單放進畫面都接得住）。
-	 *
-	 * @param array  $item       欄位設定（含 custom_id）。
-	 * @param int    $item_index 欄位在表單中的索引。
-	 * @param object $widget     Elementor 表單 widget 實例。
-	 */
-	public static function render_elementor_field( $item, $item_index, $widget ) {
-		$custom_id = isset( $item['custom_id'] ) ? $item['custom_id'] : self::ELEMENTOR_FIELD_TYPE . '-' . $item_index;
-		printf( '<div class="elementor-field" id="form-field-%s">', esc_attr( $custom_id ) );
-		self::render_widget( 'elementor_form' );
-		echo '</div>';
-	}
-
-	/**
-	 * Elementor 表單送出時的後端驗證（`elementor_pro/forms/validation`）。
-	 *
-	 * **先查這張表單有沒有 Turnstile 欄位，沒有就直接放行**——這是「只保護站台自己挑的表單」
-	 * 這個設計的關鍵，也讓沒加欄位的舊表單完全不受影響（不會突然變成全部送不出去）。
-	 *
-	 * 驗證通過後把欄位從 record 移除，否則這個沒有值的欄位會出現在通知信與 Elementor 的
-	 * 表單記錄裡（Elementor 內建的 reCAPTCHA 也是這樣處理）。
+	 * 錯誤同時用 add_error()（讓送出失敗，並顯示在前端插入的欄位 #form-field-wclon_turnstile 旁）
+	 * 與 add_error_message()（表單下方的總訊息）。v1.40 以前加過舊版 Turnstile 欄位的表單，
+	 * 那個欄位已不再渲染，這裡把它從記錄移除，不會出現在通知信與表單記錄裡。
 	 *
 	 * @param object $record       Elementor 的 Form_Record。
-	 * @param object $ajax_handler Elementor 的 Ajax_Handler，用 add_error() 擋下送出。
+	 * @param object $ajax_handler Elementor 的 Ajax_Handler。
 	 */
 	public static function verify_elementor_form( $record, $ajax_handler ) {
-		if ( ! self::get( 'protect_elementor_form', 1 ) || ! self::is_form_post() ) {
+		if ( ! is_object( $record ) || ! is_object( $ajax_handler ) ) {
 			return;
 		}
-		if ( ! is_object( $record ) || ! method_exists( $record, 'get_field' ) || ! is_object( $ajax_handler ) ) {
-			return;
+		if ( method_exists( $record, 'get_field' ) && method_exists( $record, 'remove_field' ) ) {
+			foreach ( (array) $record->get_field( array( 'type' => self::ELEMENTOR_FIELD_TYPE ) ) as $legacy ) {
+				$record->remove_field( $legacy['id'] );
+			}
 		}
-
-		$fields = $record->get_field( array( 'type' => self::ELEMENTOR_FIELD_TYPE ) );
-		if ( empty( $fields ) ) {
-			return; // 這張表單沒有加 Turnstile 欄位，不是我們要管的表單
-		}
-		$field = current( $fields );
 
 		$result = self::verify_request( 'elementor_form' );
 		if ( is_wp_error( $result ) ) {
-			$ajax_handler->add_error( $field['id'], $result->get_error_message() );
-			return;
+			$ajax_handler->add_error( self::ELEMENTOR_FIELD_TYPE, $result->get_error_message() );
+			if ( method_exists( $ajax_handler, 'add_error_message' ) ) {
+				$ajax_handler->add_error_message( $result->get_error_message() );
+			}
 		}
+	}
 
-		if ( method_exists( $record, 'remove_field' ) ) {
-			$record->remove_field( $field['id'] );
+	/**
+	 * Contact Form 7（`wpcf7_spam`）。CF7 內建的 reCAPTCHA／Turnstile 也是用這個 filter 判定，
+	 * 未通過時顯示 CF7 的「垃圾訊息」回應。CF7 經 REST API 送出，所以不走 is_form_post()。
+	 */
+	public static function verify_cf7( $spam, $submission = null ) {
+		if ( $spam ) {
+			return $spam;
 		}
+		// 站台已啟用 CF7 自己的 Turnstile 時由它驗證（token 只能驗一次，兩邊都驗會互相作廢），
+		// 前端 wclon-turnstile.js 同樣會跳過已有 Cloudflare widget 的表單。
+		if ( class_exists( 'WPCF7_Turnstile' ) && method_exists( 'WPCF7_Turnstile', 'get_instance' ) ) {
+			$service = WPCF7_Turnstile::get_instance();
+			if ( is_object( $service ) && method_exists( $service, 'is_active' ) && $service->is_active() ) {
+				return $spam;
+			}
+		}
+		$result = self::verify_request( 'cf7' );
+		if ( ! is_wp_error( $result ) ) {
+			return false;
+		}
+		if ( is_object( $submission ) && method_exists( $submission, 'add_spam_log' ) ) {
+			$submission->add_spam_log( array(
+				'agent'  => 'wclon-turnstile',
+				'reason' => $result->get_error_message(),
+			) );
+		}
+		return true;
+	}
+
+	/**
+	 * Fluent Forms（`fluentform/validation_errors`）。Fluent 把整張表單序列化成單一 data 欄位送出，
+	 * token 要從解析後的 $form_data 取，不在 $_POST 第一層。
+	 */
+	public static function verify_fluentform( $errors, $form_data = array(), $form = null ) {
+		// 表單已加了 Fluent Forms 自己的 Turnstile 欄位時由它驗證（理由同 verify_cf7()）
+		if ( is_object( $form ) && isset( $form->form_fields ) && is_string( $form->form_fields )
+			&& str_contains( $form->form_fields, '"element":"turnstile"' ) ) {
+			return $errors;
+		}
+		$token  = is_array( $form_data ) && isset( $form_data[ self::TOKEN_FIELD ] ) && is_string( $form_data[ self::TOKEN_FIELD ] )
+			? $form_data[ self::TOKEN_FIELD ] : '';
+		$result = self::verify_request( 'fluentform', $token );
+		if ( is_wp_error( $result ) ) {
+			$errors = is_array( $errors ) ? $errors : array();
+			$errors[ self::TOKEN_FIELD ] = array( $result->get_error_message() );
+		}
+		return $errors;
 	}
 
 	// ─── 設定頁渲染（嵌入 WCLON_Settings 設定頁的「Turnstile」分頁，見該檔案 render_page()） ──
@@ -570,7 +591,7 @@ class WCLON_Turnstile {
 
 			<div class="wclon-card">
 				<h2 class="wclon-card__title">保護哪些表單</h2>
-				<p class="wclon-card__desc">內建表單可各自啟用；Elementor 表單需在編輯器中逐一加入 Turnstile 欄位。</p>
+				<p class="wclon-card__desc">勾選的表單會自動加入驗證，不需要逐一設定。</p>
 				<table class="form-table">
 					<tr>
 						<th scope="row">套用範圍</th>
@@ -583,10 +604,10 @@ class WCLON_Turnstile {
 						</td>
 					</tr>
 					<tr>
-						<th scope="row">Elementor 表單</th>
+						<th scope="row">網站表單</th>
 						<td>
-							<label><input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[protect_elementor_form]" value="1" <?php checked( self::get( 'protect_elementor_form', 1 ), 1 ); ?>> 提供 Elementor 表單的 Turnstile 欄位</label>
-							<p class="description"><strong>跟上面四種不一樣，這個開關本身不會保護任何表單</strong>，它只是讓 Elementor 表單 widget 的「欄位型別」下拉選單多出一個 <code>Cloudflare Turnstile</code> 選項（做法與 Elementor 內建的 reCAPTCHA 完全相同）。<br>實際保護哪張表單由你決定：用 Elementor 編輯要保護的表單 → 表單 widget → 欄位 → 新增項目 → 類型選「Cloudflare Turnstile」（建議放在送出按鈕前的最後一個欄位）。<strong>沒有加這個欄位的表單完全不受影響</strong>，不會突然送不出去。<br>需要 Elementor <strong>Pro</strong>（表單 widget 是 Pro 功能）；沒安裝 Elementor 時這個開關沒有任何作用。</p>
+							<label><input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[protect_forms]" value="1" <?php checked( self::protect_forms() ); ?>> Elementor Pro、Contact Form 7、Fluent Forms 的所有表單</label>
+							<p class="description">驗證會自動加在每張表單的送出按鈕前。已經使用表單外掛自己的 Turnstile／reCAPTCHA 的表單請擇一使用，避免重複驗證。</p>
 						</td>
 					</tr>
 				</table>

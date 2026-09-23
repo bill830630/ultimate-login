@@ -50,7 +50,7 @@
 		el.removeAttribute('data-wclon-pending');
 
 		try {
-			// 記住 Cloudflare 回傳的 widget id：Elementor 表單送出後要用它 reset（見 bindElementorReset）
+			// 記住 Cloudflare 回傳的 widget id：AJAX 表單送出後要用它 reset（見 bindFormResets）
 			var widgetId = window.turnstile.render(el, buildOptions(el));
 			if (widgetId !== undefined && widgetId !== null) {
 				el.setAttribute('data-wclon-widget-id', widgetId);
@@ -134,26 +134,103 @@
 		});
 	}
 
-	function bindElementorReset() {
-		// Elementor 一定會載入 jQuery（它自己的前台腳本就依賴 jQuery），這裡仍然保護一下：
-		// 沒有 jQuery 就代表站上根本沒有 Elementor 表單，不綁也沒差。
+	function bindFormResets() {
+		// Contact Form 7：每次送出（不論成功、驗證失敗或判定垃圾訊息）都會在表單上觸發會冒泡的 wpcf7submit
+		document.addEventListener('wpcf7submit', function (e) {
+			resetWidgetsIn(e.target && e.target.closest ? e.target.closest('form') || e.target : e.target);
+		});
+		// Elementor 與 Fluent Forms 用 jQuery 事件；兩者前台本來就依賴 jQuery，沒有 jQuery 代表沒有這兩種表單
 		if (!window.jQuery) {
 			return;
 		}
 		window.jQuery(document).on('submit_success submit_error', '.elementor-form', function () {
 			resetWidgetsIn(this);
 		});
+		window.jQuery(document).on('fluentform_submission_success fluentform_submission_failed', 'form', function () {
+			resetWidgetsIn(this);
+		});
+	}
+
+	// ── 網站表單自動加入 widget（v1.41.0） ──
+	// 各外掛的表單可能由 AJAX、彈窗或頁面產生器晚點才放進 DOM，所以跟渲染一樣由 MutationObserver 驅動。
+	var cfg = window.wclonTurnstile || {};
+	var FORM_TYPES = [
+		{
+			form: 'form.elementor-form',
+			submit: '.elementor-field-type-submit',
+			action: 'elementor_form',
+			// 包成 Elementor 的欄位群組，錯誤訊息（#form-field-wclon_turnstile 的父層）才會顯示在旁邊
+			wrap: function (box) {
+				var group = document.createElement('div');
+				group.className = 'elementor-field-group elementor-column elementor-col-100 wclon-turnstile-field';
+				box.id = 'form-field-wclon_turnstile';
+				group.appendChild(box);
+				return group;
+			}
+		},
+		{ form: 'form.wpcf7-form', submit: '.wpcf7-submit', action: 'cf7' },
+		{ form: 'form.frm-fluent-form', submit: '.ff_submit_btn_wrapper', action: 'fluentform' }
+	];
+
+	// 表單已有 Cloudflare widget（外掛自己的 Turnstile）時不重複加入，後端同樣會跳過
+	function hasOwnWidget(form) {
+		return !!form.querySelector('.wclon-turnstile, .cf-turnstile, iframe[src*="challenges.cloudflare.com"]');
+	}
+
+	function injectForms() {
+		if (!cfg.forms || !cfg.sitekey) {
+			return;
+		}
+		FORM_TYPES.forEach(function (type) {
+			Array.prototype.forEach.call(document.querySelectorAll(type.form), function (form) {
+				if (form.hasAttribute('data-wclon-ts') || hasOwnWidget(form)) {
+					return;
+				}
+				form.setAttribute('data-wclon-ts', '1');
+
+				var box = document.createElement('div');
+				box.className = 'wclon-turnstile';
+				box.setAttribute('data-sitekey', cfg.sitekey);
+				box.setAttribute('data-theme', cfg.theme || 'auto');
+				box.setAttribute('data-size', cfg.size || 'normal');
+				box.setAttribute('data-appearance', cfg.appearance || 'always');
+				box.setAttribute('data-action', type.action);
+				var node = type.wrap ? type.wrap(box) : box;
+
+				// 插在送出按鈕（或其所在的段落/容器）前面；找不到就放在表單最後
+				var submit = form.querySelector(type.submit);
+				if (submit && 'cf7' === type.action) {
+					var para = submit.closest('p');
+					if (para && form.contains(para)) {
+						submit = para;
+					}
+				}
+				if (!submit) {
+					var btn = form.querySelector('button[type="submit"], input[type="submit"]');
+					submit = btn ? (btn.parentNode === form ? btn : btn.parentNode) : null;
+				}
+				if (submit && submit.parentNode) {
+					submit.parentNode.insertBefore(node, submit);
+				} else {
+					form.appendChild(node);
+				}
+			});
+		});
 	}
 
 	function scheduleRender() {
 		clearTimeout(renderTimer);
-		renderTimer = setTimeout(renderAll, 50);
+		renderTimer = setTimeout(function () {
+			injectForms();
+			renderAll();
+		}, 50);
 	}
 
 	// api.js 載入完成後呼叫（URL 上的 onload=wclonTurnstileOnload）。這支腳本是一般同步腳本、
 	// api.js 帶 defer，執行順序保證這個 callback 在 api.js 執行前就已經定義好。
 	window.wclonTurnstileOnload = function () {
 		apiReady = true;
+		injectForms();
 		renderAll();
 	};
 
@@ -166,11 +243,13 @@
 
 	if (document.readyState === 'loading') {
 		document.addEventListener('DOMContentLoaded', function () {
+			injectForms();
 			renderAll();
-			bindElementorReset();
+			bindFormResets();
 		});
 	} else {
+		injectForms();
 		renderAll();
-		bindElementorReset();
+		bindFormResets();
 	}
 }());

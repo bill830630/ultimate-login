@@ -599,6 +599,36 @@
     .wclon-card .form-table td { display: block; width: auto; padding-right: 0; }
     .wclon-card .form-table th { padding-bottom: 0; }
     .wclon-card .form-table td { overflow-wrap: anywhere; }
+    /* 手機瀏覽器只要有任何一個元素比螢幕寬，就會把整頁版面撐寬（所有卡片一起超出右緣）。
+       表格改成區塊排列（table 會依內容最小寬度長大）、欄位與程式碼限制在容器內，
+       最後用 overflow-x 兜底，避免任何漏網的寬內容把整頁撐開。 */
+    .wclon-admin-wrap { overflow-x: hidden; }
+    .wclon-card { min-width: 0; }
+    .wclon-card .form-table,
+    .wclon-card .form-table tbody,
+    .wclon-card .form-table tr { display: block; width: 100%; }
+    .wclon-card select,
+    .wclon-card textarea,
+    .wclon-card input:not([type="checkbox"]):not([type="radio"]) { max-width: 100%; }
+    .wclon-admin-wrap code { white-space: normal; word-break: break-all; }
+    .wclon-callout { min-width: 0; overflow-wrap: anywhere; }
+    .wclon-callout__body { flex: 1 1 auto; }
+    /* 勾選框文字換行時對齊文字起點，不要繞回勾選框底下 */
+    .wclon-card td label:has(> input[type="checkbox"]) {
+        position: relative;
+        display: inline-block;
+        max-width: 100%;
+        box-sizing: border-box;
+        min-height: 25px;
+        padding-left: 33px;
+        line-height: 25px;
+    }
+    .wclon-card td label:has(> input[type="checkbox"]) > input[type="checkbox"] {
+        position: absolute;
+        top: 0;
+        left: 0;
+        margin: 0;
+    }
     .wclon-card .form-table tr.wclon-form-subhead th { padding-top: 16px; }
     .wclon-card .form-table input.small-text { width: 120px; }
     .wclon-flex-card-layout { gap: 16px; }
