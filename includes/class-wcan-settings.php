@@ -100,7 +100,7 @@ class WCAN_Settings {
 		$clean['group_ids']                = self::parse_id_list( $input['group_ids'] ?? '' );
 
 		// 新訂單通知文案（{site_name} 可用）
-		$clean['title']       = sanitize_text_field( $input['title'] ?? '' ) ?: '🔔 新訂單通知';
+		$clean['title']       = sanitize_text_field( $input['title'] ?? '' ) ?: '新訂單通知';
 		$clean['button_text'] = sanitize_text_field( $input['button_text'] ?? '' ) ?: '前往後台查看';
 
 		self::prune_group_names( $clean['group_ids'] );
@@ -181,7 +181,7 @@ class WCAN_Settings {
 			}
 		}
 		if ( empty( $errors ) ) {
-			wp_send_json_success( array( 'message' => '✓ 測試訊息已發送，請至 LINE 確認。' ) );
+			wp_send_json_success( array( 'message' => '測試訊息已發送，請至 LINE 確認。' ) );
 		}
 		wp_send_json_error( array( 'message' => implode( '；', $errors ) ) );
 	}
@@ -192,7 +192,7 @@ class WCAN_Settings {
 		$webhook_url = home_url( '/?wcan_action=webhook' );
 		$group_ids   = (array) self::get( 'group_ids', array() );
 		$names       = self::backfill_group_names( $group_ids );
-		$title       = self::get( 'title', '🔔 新訂單通知' );
+		$title       = self::get( 'title', '新訂單通知' );
 		$button_text = self::get( 'button_text', '前往後台查看' );
 		?>
 		<div class="wclon-callout">
@@ -237,7 +237,7 @@ class WCAN_Settings {
 					</tr>
 					<tr>
 						<th scope="row"><label for="wcan_title">新訂單推播標題</label></th>
-						<td><input type="text" id="wcan_title" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[title]" value="<?php echo esc_attr( $title ); ?>" class="regular-text" placeholder="🔔 新訂單通知"></td>
+						<td><input type="text" id="wcan_title" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[title]" value="<?php echo esc_attr( $title ); ?>" class="regular-text" placeholder="新訂單通知"></td>
 					</tr>
 					<tr>
 						<th scope="row"><label for="wcan_button_text">按鈕文字</label></th>

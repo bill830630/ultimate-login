@@ -347,7 +347,7 @@
 					'<div class="wclon-flex-preview__text">' + esc(DUMMY.noteText) + '</div>';
 			} else if ('logistics' === type) {
 				color    = val('wclon_header_color', '#00C300');
-				title    = val('wclon_logistics_title', '🚚 物流狀態更新');
+				title    = val('wclon_logistics_title', '物流狀態更新');
 				bodyHtml = '<div class="wclon-flex-preview__greeting">' + esc(greeting) + '</div>' +
 					'<hr class="wclon-flex-preview__sep">' +
 					row('訂單編號', DUMMY.orderNumber) +
@@ -376,7 +376,7 @@
 
 		function couponBubble() {
 			var color   = val('wclon_header_color', '#00C300');
-			var title   = val('wclon_bind_coupon_title', '🎁 專屬優惠券');
+			var title   = val('wclon_bind_coupon_title', '專屬優惠券');
 			var btnText = val('wclon_bind_coupon_button_text', '前往購物');
 			var vars    = {
 				site_name: siteName,

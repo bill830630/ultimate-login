@@ -152,7 +152,7 @@ class WCAN_Notifier {
 			$site_name,
 			$rows,
 			$url,
-			'📝 新表單送出'
+			'新表單送出'
 		);
 		foreach ( $recipients as $group_id ) {
 			$result = self::push_message( $group_id, $message );
@@ -290,7 +290,7 @@ class WCAN_Notifier {
 	 * 組出完整 Flex Message 陣列
 	 */
 	private static function make_flex( $alt_text, $site_name, array $rows, $btn_url, $title = '' ) {
-		$title       = $title ?: ( WCAN_Settings::get( 'title', '🔔 新訂單通知' ) ?: '🔔 新訂單通知' );
+		$title       = $title ?: ( WCAN_Settings::get( 'title', '新訂單通知' ) ?: '新訂單通知' );
 		$button_text = WCAN_Settings::get( 'button_text', '前往後台查看' ) ?: '前往後台查看';
 
 		return array(
@@ -306,7 +306,7 @@ class WCAN_Notifier {
 					'contents'        => array(
 						array(
 							'type'   => 'text',
-							'text'   => '🛍️ ' . $site_name,
+							'text'   => $site_name,
 							'color'  => '#ffffff',
 							'size'   => 'sm',
 							'weight' => 'bold',

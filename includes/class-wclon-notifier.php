@@ -279,7 +279,7 @@ class WCLON_Notifier {
 		$order_url    = $order->get_view_order_url();
 		$btn_text     = WCLON_Settings::get( 'button_text', '查看訂單詳情' ) ?: '查看訂單詳情';
 		$color        = WCLON_Settings::get( 'header_color', '#00C300' );
-		$title        = WCLON_Settings::get( 'logistics_title', '🚚 物流狀態更新' ) ?: '🚚 物流狀態更新';
+		$title        = WCLON_Settings::get( 'logistics_title', '物流狀態更新' ) ?: '物流狀態更新';
 
 		$customer_name = trim( $order->get_billing_last_name() . $order->get_billing_first_name() );
 		if ( ! $customer_name ) {
@@ -506,7 +506,7 @@ class WCLON_Notifier {
 
 		$expiry_text = $expires ? ( $expires->date_i18n( 'Y-m-d' ) . ' 前有效' ) : '無使用期限';
 
-		$title       = WCLON_Settings::get( 'bind_coupon_title', '🎁 專屬優惠券' ) ?: '🎁 專屬優惠券';
+		$title       = WCLON_Settings::get( 'bind_coupon_title', '專屬優惠券' ) ?: '專屬優惠券';
 		$btn_text    = WCLON_Settings::get( 'bind_coupon_button_text', '前往購物' ) ?: '前往購物';
 		$vars        = array( 'site_name' => $site_name, 'coupon_code' => $code, 'coupon_amount' => $amount_text );
 		$greeting    = WCLON_Settings::render_template( WCLON_Settings::get( 'bind_coupon_greeting', '感謝您綁定 LINE 帳號！' ), $vars );

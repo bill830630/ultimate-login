@@ -64,6 +64,8 @@ class WCLON_Settings {
 	public static function init() {
 		add_action( 'admin_menu', array( __CLASS__, 'add_menu' ) );
 		add_action( 'admin_init', array( __CLASS__, 'register_settings' ) );
+		// priority 1：早於 register_setting()，寫回時不會經過 sanitize（sanitize 會重建整包 option）
+		add_action( 'admin_init', array( __CLASS__, 'maybe_strip_notification_emoji' ), 1 );
 		add_action( 'admin_init', array( __CLASS__, 'register_module_settings' ) );
 		add_action( 'wp_ajax_wclon_test_push', array( __CLASS__, 'ajax_test_push' ) );
 		// 儲存後清除靜態快取，確保同次請求取得最新值
@@ -114,6 +116,56 @@ class WCLON_Settings {
 			self::$module_cache = get_option( self::MODULE_OPTION_KEY, array() );
 		}
 		return ( self::$module_cache[ $module ] ?? '1' ) === '1';
+	}
+
+	/**
+	 * v1.41.2：通知文案不再使用表情符號。預設標題已改掉，但舊版存下來的標題（例如「🚚 物流狀態更新」）
+	 * 會一直沿用，這裡一次性把已存的通知文字欄位裡的表情符號移除；移除後變空的欄位刪掉，改用預設值。
+	 */
+	public static function maybe_strip_notification_emoji() {
+		if ( get_option( 'wclon_notice_emoji_stripped' ) ) {
+			return;
+		}
+		$targets = array(
+			self::OPTION_KEY => array( 'logistics_title', 'bind_coupon_title', 'bind_coupon_greeting', 'bind_coupon_desc', 'bind_coupon_button_text', 'greeting_template', 'note_title', 'button_text' ),
+			'wcan_settings'  => array( 'title', 'button_text' ),
+		);
+		foreach ( $targets as $option => $keys ) {
+			$opts = get_option( $option );
+			if ( ! is_array( $opts ) ) {
+				continue;
+			}
+			$changed = false;
+			foreach ( $keys as $key ) {
+				if ( ! isset( $opts[ $key ] ) || ! is_string( $opts[ $key ] ) ) {
+					continue;
+				}
+				$clean = self::strip_emoji( $opts[ $key ] );
+				if ( $clean !== $opts[ $key ] ) {
+					if ( '' === $clean ) {
+						unset( $opts[ $key ] );
+					} else {
+						$opts[ $key ] = $clean;
+					}
+					$changed = true;
+				}
+			}
+			if ( $changed ) {
+				update_option( $option, $opts );
+			}
+		}
+		self::$cache = null;
+		if ( class_exists( 'WCAN_Settings' ) ) {
+			WCAN_Settings::flush_cache();
+		}
+		update_option( 'wclon_notice_emoji_stripped', 1, false );
+	}
+
+	/** 移除表情符號（含變體選擇字元與零寬連接字元）並整理多餘空白 */
+	public static function strip_emoji( $text ) {
+		$text = preg_replace( '/[\x{1F000}-\x{1FAFF}\x{2600}-\x{27BF}\x{2B00}-\x{2BFF}\x{FE0F}\x{200D}\x{20E3}]/u', '', (string) $text );
+		$text = preg_replace( '/\s+(?=[，。！？、：；）」』])/u', '', $text );
+		return trim( preg_replace( '/\s{2,}/u', ' ', $text ) );
 	}
 
 	public static function flush_module_cache() {
@@ -588,10 +640,10 @@ class WCLON_Settings {
 		// 訂單狀態／備注通知的可自訂文案（{customer_name}／{site_name} 可用）
 		$clean['greeting_template'] = sanitize_text_field( $input['greeting_template'] ?? '' ) ?: '您好，{customer_name}！';
 		$clean['note_title']        = sanitize_text_field( $input['note_title'] ?? '' ) ?: '店家留言';
-		$clean['logistics_title']   = sanitize_text_field( $input['logistics_title'] ?? '' ) ?: '🚚 物流狀態更新';
+		$clean['logistics_title']   = sanitize_text_field( $input['logistics_title'] ?? '' ) ?: '物流狀態更新';
 
 		// LINE 綁定歡迎優惠券的可自訂文案（{site_name} 可用）
-		$clean['bind_coupon_title']       = sanitize_text_field( $input['bind_coupon_title'] ?? '' ) ?: '🎁 專屬優惠券';
+		$clean['bind_coupon_title']       = sanitize_text_field( $input['bind_coupon_title'] ?? '' ) ?: '專屬優惠券';
 		$clean['bind_coupon_greeting']    = sanitize_text_field( $input['bind_coupon_greeting'] ?? '' ) ?: '感謝您綁定 LINE 帳號！';
 		$clean['bind_coupon_desc']        = sanitize_textarea_field( $input['bind_coupon_desc'] ?? '' ) ?: '結帳時輸入上方代碼即可折抵，僅限本人帳號使用一次。';
 		$clean['bind_coupon_button_text'] = sanitize_text_field( $input['bind_coupon_button_text'] ?? '' ) ?: '前往購物';
@@ -620,7 +672,7 @@ class WCLON_Settings {
 
 		$result = WCLON_Notifier::test_push( $line_user_id );
 		if ( true === $result ) {
-			wp_send_json_success( array( 'message' => '✓ 測試訊息已發送，請至 LINE 確認。' ) );
+			wp_send_json_success( array( 'message' => '測試訊息已發送，請至 LINE 確認。' ) );
 		} else {
 			wp_send_json_error( array( 'message' => $result ) );
 		}
@@ -638,8 +690,8 @@ class WCLON_Settings {
 		$button_text         = self::get( 'button_text', '查看訂單詳情' );
 		$greeting_template   = self::get( 'greeting_template', '您好，{customer_name}！' );
 		$note_title          = self::get( 'note_title', '店家留言' );
-		$logistics_title     = self::get( 'logistics_title', '🚚 物流狀態更新' );
-		$bind_coupon_title       = self::get( 'bind_coupon_title', '🎁 專屬優惠券' );
+		$logistics_title     = self::get( 'logistics_title', '物流狀態更新' );
+		$bind_coupon_title       = self::get( 'bind_coupon_title', '專屬優惠券' );
 		$bind_coupon_greeting    = self::get( 'bind_coupon_greeting', '感謝您綁定 LINE 帳號！' );
 		$bind_coupon_desc        = self::get( 'bind_coupon_desc', '結帳時輸入上方代碼即可折抵，僅限本人帳號使用一次。' );
 		$bind_coupon_button_text = self::get( 'bind_coupon_button_text', '前往購物' );
@@ -1159,13 +1211,13 @@ class WCLON_Settings {
 							<tr class="<?php echo esc_attr( trim( $off_notify ) ); ?>">
 								<th scope="row"><label for="wclon_logistics_title">物流通知標題文字</label></th>
 								<td>
-									<input type="text" id="wclon_logistics_title" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[logistics_title]" value="<?php echo esc_attr( $logistics_title ); ?>" class="regular-text" placeholder="🚚 物流狀態更新">
+									<input type="text" id="wclon_logistics_title" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[logistics_title]" value="<?php echo esc_attr( $logistics_title ); ?>" class="regular-text" placeholder="物流狀態更新">
 								</td>
 							</tr>
 							<tr class="wclon-form-subhead<?php echo esc_attr( $off_social ); ?>"><th colspan="2">綁定歡迎優惠券</th></tr>
 							<tr class="<?php echo esc_attr( trim( $off_social ) ); ?>">
 								<th scope="row"><label for="wclon_bind_coupon_title">推播標題</label></th>
-								<td><input type="text" id="wclon_bind_coupon_title" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[bind_coupon_title]" value="<?php echo esc_attr( $bind_coupon_title ); ?>" class="regular-text" placeholder="🎁 專屬優惠券"></td>
+								<td><input type="text" id="wclon_bind_coupon_title" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[bind_coupon_title]" value="<?php echo esc_attr( $bind_coupon_title ); ?>" class="regular-text" placeholder="專屬優惠券"></td>
 							</tr>
 							<tr class="<?php echo esc_attr( trim( $off_social ) ); ?>">
 								<th scope="row"><label for="wclon_bind_coupon_greeting">開頭問候語</label></th>
