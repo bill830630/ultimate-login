@@ -163,17 +163,27 @@ class WCAN_Settings {
 			wp_send_json_error( array( 'message' => '權限不足。' ) );
 		}
 
+		// 只能發給已記錄的群組/聊天室（手動輸入的 ID 常是別的官方帳號的群組，LINE 只回
+		// 「Failed to send messages」，難以分辨原因），'all' 代表全部已記錄的群組。
+		$recorded  = (array) self::get( 'group_ids', array() );
 		$target_id = sanitize_text_field( wp_unslash( $_POST['line_user_id'] ?? '' ) );
-		if ( ! $target_id ) {
-			wp_send_json_error( array( 'message' => '請輸入群組/聊天室 ID。' ) );
+		$targets   = 'all' === $target_id ? $recorded : array_intersect( $recorded, array( $target_id ) );
+		if ( empty( $targets ) ) {
+			wp_send_json_error( array( 'message' => empty( $recorded ) ? '尚未記錄任何群組/聊天室，請先把官方帳號加入 LINE 群組。' : '請選擇要測試的群組/聊天室。' ) );
 		}
 
-		$result = WCAN_Notifier::test_push( $target_id );
-		if ( true === $result ) {
-			wp_send_json_success( array( 'message' => '✓ 測試訊息已發送，請至 LINE 確認。' ) );
-		} else {
-			wp_send_json_error( array( 'message' => $result ) );
+		$names  = get_option( self::NAMES_OPTION_KEY, array() );
+		$errors = array();
+		foreach ( $targets as $gid ) {
+			$result = WCAN_Notifier::test_push( $gid );
+			if ( true !== $result ) {
+				$errors[] = ( $names[ $gid ] ?? $gid ) . '：' . $result;
+			}
 		}
+		if ( empty( $errors ) ) {
+			wp_send_json_success( array( 'message' => '✓ 測試訊息已發送，請至 LINE 確認。' ) );
+		}
+		wp_send_json_error( array( 'message' => implode( '；', $errors ) ) );
 	}
 
 	// ─── 設定頁渲染（嵌入 WCLON_Settings 設定頁的「管理員通知」分頁，見該檔案 render_page()） ──
@@ -287,10 +297,20 @@ class WCAN_Settings {
 			<p class="wclon-card__desc">發送測試訊息，確認新訂單卡片外觀與 Token。</p>
 			<table class="form-table" style="max-width:600px;">
 				<tr>
-					<th scope="row"><label for="wcan_test_line_id">群組/聊天室 ID</label></th>
+					<th scope="row"><label for="wcan_test_line_id">發送到</label></th>
 					<td>
-						<input type="text" id="wcan_test_line_id" class="regular-text" placeholder="Cxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
-						<p class="description">留空則無法測試，請輸入上方已記錄的其中一組群組/聊天室 ID。</p>
+						<?php if ( empty( $group_ids ) ) : ?>
+							<p>尚未記錄任何群組/聊天室，請先依上方步驟把官方帳號加入 LINE 群組。</p>
+						<?php else : ?>
+							<select id="wcan_test_line_id">
+								<?php if ( count( $group_ids ) > 1 ) : ?>
+									<option value="all">全部已記錄的群組/聊天室</option>
+								<?php endif; ?>
+								<?php foreach ( $group_ids as $gid ) : ?>
+									<option value="<?php echo esc_attr( $gid ); ?>"><?php echo esc_html( ( $names[ $gid ] ?? '' ) ?: $gid ); ?></option>
+								<?php endforeach; ?>
+							</select>
+						<?php endif; ?>
 					</td>
 				</tr>
 			</table>

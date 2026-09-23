@@ -463,7 +463,7 @@
 	$('#wcan_test_btn').on('click', function () {
 		var btn    = $(this);
 		var msg    = $('#wcan_test_msg');
-		var lineId = $('#wcan_test_line_id').val().trim();
+		var lineId = String($('#wcan_test_line_id').val() || '');
 		btn.prop('disabled', true).text('發送中⋯');
 		msg.css('color', '#555').text('');
 		$.post(ajaxurl, {

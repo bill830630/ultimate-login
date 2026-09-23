@@ -417,7 +417,13 @@ class WCAN_Notifier {
 		$body = json_decode( wp_remote_retrieve_body( $response ), true );
 		$msg  = $body['message'] ?? '未知錯誤';
 
-		if ( 403 === $code ) {
+		if ( 400 === $code && 'Failed to send messages' === $msg ) {
+			// LINE 對「ID 格式正確但送不到」只回這句（已實測）：官方帳號不在該群組/聊天室
+			// （被移出、群組已解散），或 ID 屬於另一個官方帳號的群組。
+			$msg = '無法送達：官方帳號不在這個群組/聊天室裡（可能已被移出或群組已解散），或這個 ID 屬於另一個官方帳號';
+		} elseif ( 400 === $code && str_contains( $msg, "'to'" ) ) {
+			$msg = '群組/聊天室 ID 格式不正確';
+		} elseif ( 403 === $code ) {
 			$msg .= '（對方可能尚未加官方帳號好友，或已封鎖）';
 		} elseif ( 429 === $code ) {
 			$msg .= '（已達本月訊息額度上限）';
