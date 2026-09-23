@@ -75,15 +75,7 @@ class WCLON_Line_Login {
 			wp_die( '尚未設定 LINE Login Channel ID。' );
 		}
 
-		$state    = wp_generate_password( 24, false );
-		$redirect = ! empty( $_GET['redirect'] ) ? esc_url_raw( wp_unslash( $_GET['redirect'] ) ) : wc_get_checkout_url();
-		$raw_intent = sanitize_text_field( wp_unslash( $_GET['intent'] ?? 'link' ) );
-		$intent   = in_array( $raw_intent, array( 'link', 'login', 'register', 'checkout' ), true ) ? $raw_intent : 'link';
-
-		set_transient( self::STATE_TRANSIENT . $state, array(
-			'redirect' => $redirect,
-			'intent'   => $intent,
-		), 10 * MINUTE_IN_SECONDS );
+		$state = WCLON_OAuth::start_state( self::STATE_TRANSIENT );
 
 		$params = array(
 			'response_type' => 'code',
@@ -114,21 +106,9 @@ class WCLON_Line_Login {
 			exit;
 		}
 
-		$state = sanitize_text_field( wp_unslash( $_GET['state'] ) );
-		$data  = get_transient( self::STATE_TRANSIENT . $state );
-		if ( false === $data ) {
-			wp_die( '驗證逾時，請重新操作 LINE 綁定。' );
-		}
-		delete_transient( self::STATE_TRANSIENT . $state );
-
-		// 向下相容：舊版 transient 直接存字串
-		if ( is_string( $data ) ) {
-			$redirect = $data;
-			$intent   = 'link';
-		} else {
-			$redirect = $data['redirect'] ?? home_url();
-			$intent   = $data['intent'] ?? 'link';
-		}
+		$flow     = WCLON_OAuth::finish_state( self::STATE_TRANSIENT, sanitize_text_field( wp_unslash( $_GET['state'] ) ), 'LINE' );
+		$redirect = $flow['redirect'];
+		$intent   = $flow['intent'];
 
 		// 向 LINE 換取 access token
 		$code     = sanitize_text_field( wp_unslash( $_GET['code'] ) );
@@ -203,10 +183,7 @@ class WCLON_Line_Login {
 					self::maybe_issue_bind_coupon( $wp_user_id, $line_user_id, $is_line_friend );
 				}
 
-				wp_set_current_user( $wp_user_id );
-				wp_set_auth_cookie( $wp_user_id, true );
-				$user_data = get_userdata( $wp_user_id );
-				do_action( 'wp_login', $user_data->user_login, $user_data );
+				WCLON_OAuth::log_in( $wp_user_id );
 				wp_safe_redirect( $redirect );
 				exit;
 			}
@@ -240,10 +217,7 @@ class WCLON_Line_Login {
 			update_user_meta( $new_user_id, self::NOTIFY_META_KEY, 1 );
 			self::maybe_issue_bind_coupon( $new_user_id, $line_user_id, $is_line_friend );
 
-			wp_set_current_user( $new_user_id );
-			wp_set_auth_cookie( $new_user_id, true );
-			$user_data = get_userdata( $new_user_id );
-			do_action( 'wp_login', $user_data->user_login, $user_data );
+			WCLON_OAuth::log_in( $new_user_id );
 
 			if ( 'checkout' === $intent ) {
 				// 結帳頁 chip 註冊：完成後留在結帳頁
@@ -450,37 +424,13 @@ class WCLON_Line_Login {
 	 * @return int|WP_Error
 	 */
 	private static function create_user_from_line( $line_user_id, $display_name, $line_email = '' ) {
-		// 產生唯一 username
-		$base = sanitize_user( remove_accents( $display_name ), true );
-		if ( empty( $base ) ) {
-			$base = 'line_user';
-		}
-		$username = $base;
-		$i        = 1;
-		while ( username_exists( $username ) ) {
-			$username = $base . '_' . $i++;
-		}
-
-		// 決定 email：優先使用 LINE 提供的 email，否則用佔位符
-		if ( $line_email && is_email( $line_email ) && ! email_exists( $line_email ) ) {
-			$email = $line_email;
-		} else {
-			$email = 'line_' . strtolower( substr( $line_user_id, 0, 12 ) ) . '@noemail.invalid';
-		}
-
-		$user_id = wp_insert_user( array(
-			'user_login'   => $username,
-			'user_email'   => $email,
-			'user_pass'    => wp_generate_password( 18 ),
-			'first_name'   => $display_name,
-			'display_name' => $display_name,
-			'role'         => 'customer',
-			'meta_input'   => array(
-				'billing_first_name' => $display_name,
-			),
-		) );
-
-		return $user_id;
+		return WCLON_OAuth::create_customer(
+			$display_name,
+			$line_email,
+			'line_' . strtolower( substr( $line_user_id, 0, 12 ) ) . '@noemail.invalid',
+			'line_user',
+			array( 'billing_first_name' => $display_name )
+		);
 	}
 
 	/**
@@ -621,13 +571,7 @@ class WCLON_Line_Login {
 	}
 
 	private static function find_user_by_line_id( $line_user_id ) {
-		$users = get_users( array(
-			'meta_key'   => self::USER_META_KEY,
-			'meta_value' => $line_user_id,
-			'number'     => 1,
-			'fields'     => 'ids',
-		) );
-		return ! empty( $users ) ? (int) $users[0] : 0;
+		return WCLON_OAuth::find_user_by_meta( self::USER_META_KEY, $line_user_id );
 	}
 
 	private static function set_line_session( $line_user_id ) {

@@ -290,29 +290,6 @@ class WCAN_Settings {
 			<span id="wcan_test_msg" class="wclon-test-msg"></span>
 		</div>
 
-		<script>
-		(function ($) {
-			$('#wcan_test_btn').on('click', function () {
-				var btn    = $(this);
-				var msg    = $('#wcan_test_msg');
-				var lineId = $('#wcan_test_line_id').val().trim();
-				btn.prop('disabled', true).text('發送中⋯');
-				msg.css('color', '#555').text('');
-				$.post(ajaxurl, {
-					action:       'wcan_test_push',
-					nonce:        '<?php echo esc_js( wp_create_nonce( 'wcan_admin_action' ) ); ?>',
-					line_user_id: lineId,
-				}, function (res) {
-					btn.prop('disabled', false).text('發送測試訊息');
-					if (res.success) {
-						msg.css('color', '#00a32a').text(res.data.message);
-					} else {
-						msg.css('color', '#d63638').text(res.data.message || '發送失敗');
-					}
-				});
-			});
-		}(jQuery));
-		</script>
 		<?php
 	}
 }

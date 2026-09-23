@@ -102,15 +102,21 @@ class WCLON_License {
 		if ( ! $force && ! empty( $data['last_checked'] ) && ( $now - (int) $data['last_checked'] ) < self::CACHE_TTL ) {
 			return in_array( $data['status'] ?? '', array( 'active', 'grace' ), true );
 		}
+		$grace = ! empty( $data['last_success'] ) && ( $now - (int) $data['last_success'] ) < self::GRACE_TTL;
+		// 前台訪客不等授權伺服器（最長 10 秒逾時）：快取過期時沿用上次結果，重新驗證交給後台頁面、
+		// WP-Cron 或 WP-CLI 請求（admin-ajax 也常是前台呼叫，排除）（v1.39.0）。
+		$can_fetch = ( is_admin() && ! wp_doing_ajax() ) || wp_doing_cron() || ( defined( 'WP_CLI' ) && WP_CLI );
+		if ( ! $force && ! $can_fetch ) {
+			return in_array( $data['status'] ?? '', array( 'active', 'grace' ), true ) && $grace;
+		}
 		$lock = 'wclon_license_check_lock';
 		if ( ! $force && get_transient( $lock ) ) {
-			return ! empty( $data['last_success'] ) && ( $now - (int) $data['last_success'] ) < self::GRACE_TTL;
+			return $grace;
 		}
 		set_transient( $lock, '1', MINUTE_IN_SECONDS );
 		$response = self::request( '/v1/licenses/validate', self::payload( $data ) );
 		delete_transient( $lock );
 		if ( is_wp_error( $response ) ) {
-			$grace = ! empty( $data['last_success'] ) && ( $now - (int) $data['last_success'] ) < self::GRACE_TTL;
 			self::update( array(
 				'status'       => $grace ? 'grace' : 'unreachable',
 				'last_checked' => $now,
@@ -168,8 +174,7 @@ class WCLON_License {
 
 	public static function render_tab() {
 		if ( ! current_user_can( 'manage_options' ) ) return;
-		$data   = self::data();
-		$active = self::is_active();
+		$active = self::is_active(); // 可能順便重新驗證並更新資料，所以先呼叫再讀
 		$data   = self::data();
 		$status = $active ? ( 'grace' === ( $data['status'] ?? '' ) ? '離線寬限中' : '已啟用' ) : '未啟用';
 		$format_time = static function ( $value ) {

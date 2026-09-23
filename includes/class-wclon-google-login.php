@@ -56,15 +56,7 @@ class WCLON_Google_Login {
 			wp_die( '尚未設定 Google Client ID。' );
 		}
 
-		$state      = wp_generate_password( 24, false );
-		$redirect   = ! empty( $_GET['redirect'] ) ? esc_url_raw( wp_unslash( $_GET['redirect'] ) ) : wc_get_checkout_url();
-		$raw_intent = sanitize_text_field( wp_unslash( $_GET['intent'] ?? 'link' ) );
-		$intent     = in_array( $raw_intent, array( 'link', 'login', 'register', 'checkout' ), true ) ? $raw_intent : 'link';
-
-		set_transient( self::STATE_TRANSIENT . $state, array(
-			'redirect' => $redirect,
-			'intent'   => $intent,
-		), 10 * MINUTE_IN_SECONDS );
+		$state = WCLON_OAuth::start_state( self::STATE_TRANSIENT );
 
 		$params = array(
 			'client_id'     => $client_id,
@@ -85,15 +77,9 @@ class WCLON_Google_Login {
 			exit;
 		}
 
-		$state = sanitize_text_field( wp_unslash( $_GET['state'] ) );
-		$data  = get_transient( self::STATE_TRANSIENT . $state );
-		if ( false === $data ) {
-			wp_die( '驗證逾時，請重新操作 Google 登入。' );
-		}
-		delete_transient( self::STATE_TRANSIENT . $state );
-
-		$redirect = $data['redirect'] ?? home_url();
-		$intent   = $data['intent'] ?? 'link';
+		$flow     = WCLON_OAuth::finish_state( self::STATE_TRANSIENT, sanitize_text_field( wp_unslash( $_GET['state'] ) ), 'Google' );
+		$redirect = $flow['redirect'];
+		$intent   = $flow['intent'];
 
 		// 向 Google 換取 access token
 		$code     = sanitize_text_field( wp_unslash( $_GET['code'] ) );
@@ -155,10 +141,7 @@ class WCLON_Google_Login {
 				// 找到對應帳號 → 確保 Google ID 已綁定後登入
 				update_user_meta( $wp_user_id, self::USER_META_KEY, $google_id );
 				update_user_meta( $wp_user_id, self::USER_META_NAME, $display_name );
-				wp_set_current_user( $wp_user_id );
-				wp_set_auth_cookie( $wp_user_id, true );
-				$user_data = get_userdata( $wp_user_id );
-				do_action( 'wp_login', $user_data->user_login, $user_data );
+				WCLON_OAuth::log_in( $wp_user_id );
 				wp_safe_redirect( $redirect );
 				exit;
 			}
@@ -184,10 +167,7 @@ class WCLON_Google_Login {
 
 			update_user_meta( $new_user_id, self::USER_META_KEY, $google_id );
 			update_user_meta( $new_user_id, self::USER_META_NAME, $display_name );
-			wp_set_current_user( $new_user_id );
-			wp_set_auth_cookie( $new_user_id, true );
-			$user_data = get_userdata( $new_user_id );
-			do_action( 'wp_login', $user_data->user_login, $user_data );
+			WCLON_OAuth::log_in( $new_user_id );
 
 			if ( 'checkout' === $intent ) {
 				// 結帳頁 chip 註冊：完成後留在結帳頁
@@ -236,43 +216,17 @@ class WCLON_Google_Login {
 	/* ---------- Helper ---------- */
 
 	private static function find_user_by_google_id( $google_id ) {
-		$users = get_users( array(
-			'meta_key'   => self::USER_META_KEY,
-			'meta_value' => $google_id,
-			'number'     => 1,
-			'fields'     => 'ids',
-		) );
-		return ! empty( $users ) ? (int) $users[0] : 0;
+		return WCLON_OAuth::find_user_by_meta( self::USER_META_KEY, $google_id );
 	}
 
 	private static function create_user_from_google( $google_id, $display_name, $google_email ) {
-		$base = sanitize_user( remove_accents( $display_name ), true );
-		if ( empty( $base ) ) {
-			$base = 'google_user';
-		}
-		$username = $base;
-		$i        = 1;
-		while ( username_exists( $username ) ) {
-			$username = $base . '_' . $i++;
-		}
-
-		if ( $google_email && is_email( $google_email ) && ! email_exists( $google_email ) ) {
-			$email = $google_email;
-		} else {
-			$email = 'google_' . strtolower( substr( $google_id, 0, 12 ) ) . '@noemail.invalid';
-		}
-
-		return wp_insert_user( array(
-			'user_login'   => $username,
-			'user_email'   => $email,
-			'user_pass'    => wp_generate_password( 18 ),
-			'first_name'   => $display_name,
-			'display_name' => $display_name,
-			'role'         => 'customer',
-			'meta_input'   => array(
-				'billing_first_name' => $display_name,
-			),
-		) );
+		return WCLON_OAuth::create_customer(
+			$display_name,
+			$google_email,
+			'google_' . strtolower( substr( $google_id, 0, 12 ) ) . '@noemail.invalid',
+			'google_user',
+			array( 'billing_first_name' => $display_name )
+		);
 	}
 
 	/* ---------- 前台綁定按鈕（結帳 / 我的帳號）---------- */

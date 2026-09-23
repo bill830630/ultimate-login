@@ -3,7 +3,7 @@
  * Plugin Name: Ultimate Login
  * Plugin URI:  https://example.com
  * Description: 讓顧客透過 LINE、Google、Apple 登入綁定帳號，並在 WooCommerce 訂單狀態變更時，透過 LINE Messaging API 自動推播訂單通知給顧客；同時可推播新訂單通知到管理員/員工共用的 LINE 群組或聊天室。
- * Version:     1.38.2
+ * Version:     1.39.0
  * Author:      NiBill
  * Text Domain: ultimate-login
  * Requires Plugins: woocommerce
@@ -45,7 +45,7 @@ if ( defined( 'WCLON_VERSION' ) ) {
 	return;
 }
 
-define( 'WCLON_VERSION', '1.38.2' );
+define( 'WCLON_VERSION', '1.39.0' );
 define( 'WCLON_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WCLON_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 // 會員中心「帳號綁定」獨立頁面的 WC Account endpoint slug
@@ -53,6 +53,7 @@ define( 'WCLON_ACCOUNT_ENDPOINT', 'social-login' );
 
 require_once WCLON_PLUGIN_DIR . 'includes/class-wclon-settings.php';
 require_once WCLON_PLUGIN_DIR . 'includes/class-wclon-license.php';
+require_once WCLON_PLUGIN_DIR . 'includes/class-wclon-oauth.php';
 require_once WCLON_PLUGIN_DIR . 'includes/class-wclon-line-login.php';
 require_once WCLON_PLUGIN_DIR . 'includes/class-wclon-google-login.php';
 require_once WCLON_PLUGIN_DIR . 'includes/class-wclon-apple-login.php';
@@ -96,8 +97,13 @@ add_action( 'plugins_loaded', function () {
 	if ( WCLON_Settings::module_enabled( 'order_notify' ) ) {
 		WCLON_Notifier::init();
 		WCAN_Settings::init();
-		WCAN_Webhook::init();
 		WCAN_Notifier::init();
+	}
+	// Messaging API webhook 是整個 channel 唯一的接收點：除了擷取管理員群組 ID（訂單通知），
+	// 也負責在顧客加好友（follow）時補發「LINE 綁定歡迎優惠券」（社交登入）。v1.39.0 前只在
+	// 訂單通知模組啟用時才掛，關掉訂單通知會讓補發靜默失效。
+	if ( WCLON_Settings::module_enabled( 'order_notify' ) || WCLON_Settings::module_enabled( 'social_login' ) ) {
+		WCAN_Webhook::init();
 	}
 	if ( WCLON_Settings::module_enabled( 'system_email' ) ) {
 		WCLON_System_Email_Settings::init();
@@ -155,6 +161,14 @@ add_action( 'plugins_loaded', function () {
 	};
 
 	$wclon_login_row_open = false;
+
+	// 社交登入按鈕的樣式與導覽腳本（v1.39.0 起移到授權檢查之後，未授權時前台不再載入）
+	foreach ( array( 'wp_enqueue_scripts', 'login_enqueue_scripts' ) as $wclon_asset_hook ) {
+		add_action( $wclon_asset_hook, function () {
+			wp_enqueue_style( 'wclon-frontend', WCLON_PLUGIN_URL . 'assets/css/wclon-frontend.css', array(), WCLON_VERSION );
+			wp_enqueue_script( 'wclon-auth-nav', WCLON_PLUGIN_URL . 'assets/js/wclon-auth-nav.js', array(), WCLON_VERSION, true );
+		} );
+	}
 
 	$wclon_open_login_row = function () use ( &$wclon_login_row_open, $wclon_social_enabled, $wclon_row_class, $wclon_btn_position, $wclon_divider_html ) {
 		if ( $wclon_login_row_open ) {
@@ -356,29 +370,6 @@ add_action( 'plugins_loaded', function () {
 	}, 50 );
 	} // if ( $wclon_mod_social || $wclon_mod_notify )
 } );
-
-// wclon-frontend.css／wclon-auth-nav.js 純粹是社交登入按鈕的樣式與導覽腳本，
-// 「社交登入」模組關閉時完全用不到，一併不註冊。
-if ( WCLON_Settings::module_enabled( 'social_login' ) ) {
-	foreach ( array( 'wp_enqueue_scripts', 'login_enqueue_scripts' ) as $_wclon_hook ) {
-		add_action( $_wclon_hook, function () {
-			wp_enqueue_style(
-				'wclon-frontend',
-				WCLON_PLUGIN_URL . 'assets/css/wclon-frontend.css',
-				array(),
-				WCLON_VERSION
-			);
-			wp_enqueue_script(
-				'wclon-auth-nav',
-				WCLON_PLUGIN_URL . 'assets/js/wclon-auth-nav.js',
-				array(),
-				WCLON_VERSION,
-				true
-			);
-		} );
-	}
-	unset( $_wclon_hook );
-}
 
 // 宣告支援 HPOS（高效能訂單儲存）
 add_action( 'before_woocommerce_init', function () {

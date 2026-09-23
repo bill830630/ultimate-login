@@ -56,15 +56,7 @@ class WCLON_Apple_Login {
 			wp_die( '尚未設定 Apple Services ID。' );
 		}
 
-		$state      = wp_generate_password( 24, false );
-		$redirect   = ! empty( $_GET['redirect'] ) ? esc_url_raw( wp_unslash( $_GET['redirect'] ) ) : wc_get_checkout_url();
-		$raw_intent = sanitize_text_field( wp_unslash( isset( $_GET['intent'] ) ? $_GET['intent'] : 'link' ) );
-		$intent     = in_array( $raw_intent, array( 'link', 'login', 'register', 'checkout' ), true ) ? $raw_intent : 'link';
-
-		set_transient( self::STATE_TRANSIENT . $state, array(
-			'redirect' => $redirect,
-			'intent'   => $intent,
-		), 10 * MINUTE_IN_SECONDS );
+		$state = WCLON_OAuth::start_state( self::STATE_TRANSIENT );
 
 		$params = array(
 			'client_id'     => $client_id,
@@ -95,15 +87,9 @@ class WCLON_Apple_Login {
 			exit;
 		}
 
-		$state = sanitize_text_field( wp_unslash( $_POST['state'] ) );
-		$data  = get_transient( self::STATE_TRANSIENT . $state );
-		if ( false === $data ) {
-			wp_die( '驗證逾時，請重新操作 Apple 登入。' );
-		}
-		delete_transient( self::STATE_TRANSIENT . $state );
-
-		$redirect = isset( $data['redirect'] ) ? $data['redirect'] : home_url();
-		$intent   = isset( $data['intent'] ) ? $data['intent'] : 'link';
+		$flow     = WCLON_OAuth::finish_state( self::STATE_TRANSIENT, sanitize_text_field( wp_unslash( $_POST['state'] ) ), 'Apple' );
+		$redirect = $flow['redirect'];
+		$intent   = $flow['intent'];
 
 		// 向 Apple 換取 token
 		$code          = sanitize_text_field( wp_unslash( $_POST['code'] ) );
@@ -176,10 +162,7 @@ class WCLON_Apple_Login {
 				if ( $display_name ) {
 					update_user_meta( $wp_user_id, self::USER_META_NAME, $display_name );
 				}
-				wp_set_current_user( $wp_user_id );
-				wp_set_auth_cookie( $wp_user_id, true );
-				$user_data = get_userdata( $wp_user_id );
-				do_action( 'wp_login', $user_data->user_login, $user_data );
+				WCLON_OAuth::log_in( $wp_user_id );
 				wp_safe_redirect( $redirect );
 				exit;
 			}
@@ -208,10 +191,7 @@ class WCLON_Apple_Login {
 			if ( $display_name ) {
 				update_user_meta( $new_user_id, self::USER_META_NAME, $display_name );
 			}
-			wp_set_current_user( $new_user_id );
-			wp_set_auth_cookie( $new_user_id, true );
-			$user_data = get_userdata( $new_user_id );
-			do_action( 'wp_login', $user_data->user_login, $user_data );
+			WCLON_OAuth::log_in( $new_user_id );
 
 			if ( 'checkout' === $intent ) {
 				// 結帳頁 chip 註冊：完成後留在結帳頁
@@ -359,47 +339,21 @@ class WCLON_Apple_Login {
 	/* ---------- Helper ---------- */
 
 	private static function find_user_by_apple_id( $apple_id ) {
-		$users = get_users( array(
-			'meta_key'   => self::USER_META_KEY,
-			'meta_value' => $apple_id,
-			'number'     => 1,
-			'fields'     => 'ids',
-		) );
-		return ! empty( $users ) ? (int) $users[0] : 0;
+		return WCLON_OAuth::find_user_by_meta( self::USER_META_KEY, $apple_id );
 	}
 
 	private static function create_user_from_apple( $apple_id, $display_name, $apple_email, $first_name = '', $last_name = '' ) {
-		$base = $display_name ? sanitize_user( remove_accents( $display_name ), true ) : '';
-		if ( empty( $base ) ) {
-			$base = 'apple_user';
-		}
-		$username = $base;
-		$i        = 1;
-		while ( username_exists( $username ) ) {
-			$username = $base . '_' . $i++;
-		}
-
-		if ( $apple_email && is_email( $apple_email ) && ! email_exists( $apple_email ) ) {
-			$email = $apple_email;
-		} else {
-			// Apple 的 sub 格式為 000000.xxx，取前 16 碼作為佔位符
-			$email = 'apple_' . strtolower( substr( preg_replace( '/[^a-zA-Z0-9]/', '', $apple_id ), 0, 16 ) ) . '@noemail.invalid';
-		}
-
-		return wp_insert_user( array(
-			'user_login'   => $username,
-			'user_email'   => $email,
-			'user_pass'    => wp_generate_password( 18 ),
-			'first_name'   => $display_name,
-			'display_name' => $display_name,
-			'role'         => 'customer',
-			'meta_input'   => array(
-				// Apple 授權當下有拆好的姓/名可用時直接對應寫入，比 LINE/Google 只有單一暱稱字串更準確；
-				// 沒有拆分資料時（非首次授權）退回跟 LINE/Google 一致的做法，整串塞 billing_first_name。
-				'billing_first_name' => $first_name !== '' ? $first_name : $display_name,
+		return WCLON_OAuth::create_customer(
+			$display_name,
+			$apple_email,
+			'apple_' . strtolower( substr( preg_replace( '/[^a-zA-Z0-9]/', '', $apple_id ), 0, 16 ) ) . '@noemail.invalid',
+			'apple_user',
+			array(
+				// Apple 授權當下有拆好的姓/名可用時直接對應寫入；非首次授權沒有拆分資料時整串塞 billing_first_name。
+				'billing_first_name' => '' !== $first_name ? $first_name : $display_name,
 				'billing_last_name'  => $last_name,
-			),
-		) );
+			)
+		);
 	}
 
 	/* ---------- 前台綁定按鈕（結帳 / 我的帳號）---------- */
