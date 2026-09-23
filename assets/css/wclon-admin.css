@@ -334,7 +334,7 @@
 
 .wclon-flex-card-layout__fields {
     flex: 1 1 320px;
-    min-width: 280px;
+    min-width: 0;
 }
 
 .wclon-flex-card-layout__fields .form-table {
@@ -468,6 +468,22 @@
     word-break: break-word;
 }
 
+/* 模組關閉時仍輸出（同一張表單，避免儲存時被清空）但不顯示的卡片／欄位列。 */
+.wclon-module-off { display: none !important; }
+
+/* 同一張 form-table 裡的分段小標（推播訊息樣式：訂單通知／綁定歡迎優惠券）。 */
+.wclon-card .form-table tr.wclon-form-subhead th {
+    padding: 20px 0 4px;
+    border-top: 1px solid #f0f0f1;
+    color: #1d2327;
+    font-size: 13px;
+    font-weight: 600;
+}
+.wclon-card .form-table tr.wclon-form-subhead:first-child th {
+    padding-top: 8px;
+    border-top: 0;
+}
+
 /* ── 模組開關（v1.36.0，「模組」頁籤） ──
    刻意仿照終極電商（ultimate-ecommerce）assets/css/twshop-admin.css 裡的 .twshop-toggle／
    .twshop-slider／.twshop-module-row／.twshop-module-label／.twshop-module-desc，數值原樣照抄
@@ -558,21 +574,45 @@
 
 @media (max-width: 782px) {
     .wclon-admin-wrap { margin-left: -10px; width: calc(100% + 10px); }
-    .wclon-admin-header { padding: 0 24px; }
-    .wclon-admin-wrap .nav-tab-wrapper { padding: 9px 24px 0; gap: 24px; overflow-x: auto; flex-wrap: nowrap; }
-    .wclon-admin-wrap .nav-tab { flex: 0 0 auto; margin: 10px 10px 0 0; }
-    .wclon-admin-wrap .nav-tab.nav-tab-active { margin-bottom: 0; }
-    .wclon-subtabs { padding: 14px 30px 0; overflow-x: auto; }
+    .wclon-admin-header { min-height: 52px; padding: 0 16px; }
+    .wclon-admin-wrap .nav-tab-wrapper {
+        gap: 20px;
+        padding: 6px 16px 0;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+    }
+    .wclon-admin-wrap .nav-tab-wrapper::-webkit-scrollbar { display: none; }
+    .wclon-admin-wrap .nav-tab { flex: 0 0 auto; margin: 0; white-space: nowrap; }
+    .wclon-subtabs { padding: 12px 16px 0; overflow-x: auto; scrollbar-width: none; }
+    .wclon-subtabs::-webkit-scrollbar { display: none; }
     .wclon-subtabs .subsubsub { flex-wrap: nowrap; white-space: nowrap; }
     .wclon-admin-wrap #wclon-settings-form > .wclon-tab-pane,
-    .wclon-admin-wrap > .wclon-tab-pane { padding: 24px 30px 0; }
-    #wclon-main-submit { margin-left: 30px; margin-right: 30px; }
+    .wclon-admin-wrap > .wclon-tab-pane { padding: 16px 16px 0; }
+    #wclon-license-inline-notice { margin: 16px 16px 0; }
+    #wclon-main-submit { margin: 0 16px 32px; }
+    #wclon-main-submit .button { width: 100%; }
+    .wclon-card { padding: 16px; margin-bottom: 16px; }
+    .wclon-callout { margin-bottom: 16px; }
     .wclon-card .form-table th,
     .wclon-card .form-table td { display: block; width: auto; padding-right: 0; }
     .wclon-card .form-table th { padding-bottom: 0; }
-    .wclon-license-details { grid-template-columns: minmax(0, 1fr); }
+    .wclon-card .form-table td { overflow-wrap: anywhere; }
+    .wclon-card .form-table tr.wclon-form-subhead th { padding-top: 16px; }
+    .wclon-card .form-table input.small-text { width: 120px; }
+    .wclon-flex-card-layout { gap: 16px; }
+    .wclon-flex-preview { width: 100%; }
+    .wclon-flex-card-layout__preview select { width: 100%; max-width: none; }
+    #wclon_test_btn { width: 100%; margin-top: 4px; }
+    .wclon-test-msg { display: block; margin: 8px 0 0; }
+    .wclon-module-row { gap: 12px; }
+    .wclon-module-label { width: auto; flex: 1 1 auto; }
+    .wclon-license-card__header { flex-wrap: wrap; padding: 16px; }
+    .wclon-license-details { grid-template-columns: minmax(0, 1fr); padding: 6px 16px; }
     .wclon-license-details > div:nth-child(odd),
     .wclon-license-details > div:nth-child(even) { padding-left: 0; padding-right: 0; }
+    .wclon-license-actions { padding: 16px; }
     .wclon-license-actions form { align-items: stretch; flex-direction: column; }
     .wclon-license-actions .regular-text,
     .wclon-license-actions .button { width: 100%; }
@@ -580,5 +620,5 @@
 
 @media (max-width: 480px) {
     .wclon-admin-wrap { min-height: calc(100vh - 46px); }
-    .wclon-admin-wrap .nav-tab { font-size: 16px; }
+    .wclon-admin-wrap .nav-tab { font-size: 15px; }
 }

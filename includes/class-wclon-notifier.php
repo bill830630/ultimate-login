@@ -32,13 +32,17 @@ class WCLON_Notifier {
 	);
 
 	public static function init() {
-		add_action( 'woocommerce_order_status_changed', array( __CLASS__, 'maybe_notify' ), 10, 4 );
-		// 補捉訂單建立時就已確定狀態的情形（如銀行轉帳），此時不會有狀態轉換事件
-		add_action( 'woocommerce_checkout_order_created', array( __CLASS__, 'maybe_notify_on_create' ) );
-		add_action( 'woocommerce_new_customer_note', array( __CLASS__, 'notify_customer_note' ) );
-		// 物流狀態通知（v1.17.0 新增）：只讀 ecpay-ecommerce-for-woocommerce 外掛寫入的訂單備注，
-		// 不修改該外掛、也不重新實作物流 API，見 maybe_notify_logistics_note()
-		add_action( 'woocommerce_order_note_added', array( __CLASS__, 'maybe_notify_logistics_note' ), 10, 2 );
+		// 顧客 LINE 推播的前提是顧客綁定過 LINE，社交登入模組關閉時綁定入口全部消失，
+		// 推播也一併停用（v1.40.0）；Email 通知開關與壓制照常運作。
+		if ( WCLON_Settings::module_enabled( 'social_login' ) ) {
+			add_action( 'woocommerce_order_status_changed', array( __CLASS__, 'maybe_notify' ), 10, 4 );
+			// 補捉訂單建立時就已確定狀態的情形（如銀行轉帳），此時不會有狀態轉換事件
+			add_action( 'woocommerce_checkout_order_created', array( __CLASS__, 'maybe_notify_on_create' ) );
+			add_action( 'woocommerce_new_customer_note', array( __CLASS__, 'notify_customer_note' ) );
+			// 物流狀態通知（v1.17.0 新增）：只讀 ecpay-ecommerce-for-woocommerce 外掛寫入的訂單備注，
+			// 不修改該外掛、也不重新實作物流 API，見 maybe_notify_logistics_note()
+			add_action( 'woocommerce_order_note_added', array( __CLASS__, 'maybe_notify_logistics_note' ), 10, 2 );
+		}
 
 		foreach ( array_keys( self::$email_status_map ) as $email_id ) {
 			add_filter( 'woocommerce_email_enabled_' . $email_id, array( __CLASS__, 'maybe_suppress_wc_email' ), 10, 2 );

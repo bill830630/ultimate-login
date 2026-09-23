@@ -190,7 +190,7 @@ class WCAN_Settings {
 				<p style="margin:4px 0 0;">把官方帳號跟需要收到通知的員工一起加入同一個 LINE 群組（或多人聊天室），新訂單會用官方帳號的身分發到群組裡，所有成員都看得到；與上方「顧客 LINE 訂單通知」是兩套獨立設定，但共用同一組 Channel Access Token。</p>
 				<ol>
 					<li>到 <a href="https://developers.line.biz/console/" target="_blank">LINE Developers Console</a> 建立 Provider。</li>
-					<li>在同一個 Provider 下建立 <strong>Messaging API channel</strong>（綁定官方帳號），發行長效 Channel Access Token（填在「顧客通知」分頁的「LINE 串接設定」卡片），並在該 channel 頁籤查到 Channel Secret（填在下方）。</li>
+					<li>在同一個 Provider 下建立 <strong>Messaging API channel</strong>（綁定官方帳號），發行長效 Channel Access Token（填在「LINE 串接設定」卡片），並在該 channel 頁籤查到 Channel Secret（填在下方）。</li>
 					<li>完成 Linked OA 設定，綁定官方帳號。</li>
 				</ol>
 			</div>

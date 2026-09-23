@@ -683,15 +683,44 @@ class WCLON_Settings {
 		// 不會出現「點得進去、填了勾選、按下儲存卻被告知權限不足」這種體驗。
 		$can_manage_modules = current_user_can( 'manage_options' );
 		$can_manage_license = current_user_can( 'manage_options' );
-		$tab_groups = array(
-			'general' => array( 'label' => '一般設定', 'tabs' => array( 'general' => '一般設定' ) ),
-		);
+		// 「一般設定」裡全是社交按鈕的外觀與顯示位置，社交登入模組關閉時跟 LINE／Google／Apple
+		// 一樣不出現（pane 仍照常渲染，理由同上）。
+		// 「顧客通知」的內容全部建立在顧客綁定 LINE 之上（顧客 LINE 訂單通知需要兩個模組都開；
+		// LINE 綁定歡迎優惠券屬社交登入），所以跟著社交登入模組；「管理員通知」只跟訂單通知。
+		$cust_line  = $mod_notify && $mod_social;
+		$tab_groups = array();
 		if ( $mod_social ) {
-			$tab_groups['social'] = array( 'label' => '社交登入', 'tabs' => array( 'line' => 'LINE', 'google' => 'Google', 'apple' => 'Apple' ) );
+			$tab_groups['general'] = array( 'label' => '一般設定', 'tabs' => array( 'general' => '一般設定' ) );
+			$tab_groups['social']  = array( 'label' => '社交登入', 'tabs' => array( 'line' => 'LINE', 'google' => 'Google', 'apple' => 'Apple' ) );
 		}
-		if ( $mod_notify ) {
-			$tab_groups['notifications'] = array( 'label' => '通知', 'tabs' => array( 'customer' => '顧客通知', 'adminline' => '管理員通知' ) );
+		if ( $mod_notify || $mod_social ) {
+			$notify_tabs = array();
+			if ( $mod_social ) $notify_tabs['customer'] = '顧客通知';
+			if ( $mod_notify ) $notify_tabs['adminline'] = '管理員通知';
+			$tab_groups['notifications'] = array( 'label' => '通知', 'tabs' => $notify_tabs );
 		}
+		// 模組關閉的卡片／欄位列：仍輸出（同一張表單，避免儲存時被清空），只是隱藏
+		$off_notify = $cust_line ? '' : ' wclon-module-off';
+		$off_social = $mod_social ? '' : ' wclon-module-off';
+		// Channel Access Token 顧客與管理員群組通知共用。只開訂單通知時顧客通知頁籤不存在，
+		// 改放到管理員通知頁籤（該處在主表單之外，欄位用 form 屬性歸回主表單）；任何情況都只輸出一次。
+		$token_in_admin = $mod_notify && ! $mod_social;
+		$render_token_card = function ( $form_attr = '' ) {
+			?>
+					<div class="wclon-card">
+						<h2 class="wclon-card__title">LINE 串接設定 <span class="wclon-shared-tag">共用</span></h2>
+						<table class="form-table">
+							<tr>
+								<th scope="row"><label for="wclon_channel_access_token">Messaging API<br>Channel Access Token</label></th>
+								<td>
+									<textarea id="wclon_channel_access_token" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[channel_access_token]"<?php echo $form_attr ? ' form="' . esc_attr( $form_attr ) . '"' : ''; ?> rows="3" class="large-text" placeholder="長效 Channel Access Token"><?php echo esc_textarea( self::get( 'channel_access_token' ) ); ?></textarea>
+									<p class="description">在 LINE Developers Console 的 Messaging API channel 頁籤取得。只需填一次，顧客通知與管理員群組通知共用同一組 Token。</p>
+								</td>
+							</tr>
+						</table>
+					</div>
+			<?php
+		};
 		$tab_groups['security'] = array( 'label' => '安全性', 'tabs' => array( 'turnstile' => 'Turnstile' ) );
 		$system_tabs = array();
 		if ( $can_manage_license ) $system_tabs['license'] = '授權';
@@ -707,8 +736,8 @@ class WCLON_Settings {
 			</div>
 
 			<nav class="nav-tab-wrapper" aria-label="終極登入功能分類">
-				<?php foreach ( $tab_groups as $group_id => $group ) : $default_tab = array_key_first( $group['tabs'] ); ?>
-				<a href="#<?php echo esc_attr( $default_tab ); ?>" class="nav-tab<?php echo 'general' === $group_id ? ' nav-tab-active' : ''; ?>" data-wclon-group="<?php echo esc_attr( $group_id ); ?>" data-wclon-default-tab="<?php echo esc_attr( $default_tab ); ?>"><?php echo esc_html( $group['label'] ); ?></a>
+				<?php $first_group = array_key_first( $tab_groups ); foreach ( $tab_groups as $group_id => $group ) : $default_tab = array_key_first( $group['tabs'] ); ?>
+				<a href="#<?php echo esc_attr( $default_tab ); ?>" class="nav-tab<?php echo $first_group === $group_id ? ' nav-tab-active' : ''; ?>" data-wclon-group="<?php echo esc_attr( $group_id ); ?>" data-wclon-default-tab="<?php echo esc_attr( $default_tab ); ?>"><?php echo esc_html( $group['label'] ); ?></a>
 				<?php endforeach; ?>
 			</nav>
 
@@ -728,7 +757,7 @@ class WCLON_Settings {
 				<?php settings_fields( 'wclon_settings_group' ); ?>
 
 				<!-- ══ 一般設定 Tab ══ -->
-				<div id="wclon-tab-general" class="wclon-tab-pane" data-tab="general">
+				<div id="wclon-tab-general" class="wclon-tab-pane" data-tab="general" style="display:none;">
 					<div class="wclon-card">
 						<h2 class="wclon-card__title">社交按鈕顯示位置</h2>
 						<p class="wclon-card__desc">套用至所有已啟用的登入平台（LINE / Google / Apple）。</p>
@@ -884,82 +913,6 @@ class WCLON_Settings {
 						</table>
 					</div>
 
-					<div class="wclon-card">
-						<h2 class="wclon-card__title">綁定歡迎優惠券</h2>
-						<p class="wclon-card__desc">首次綁定 LINE 後發送專屬優惠券；未加好友時暫緩，加入後補發（需先設定「管理員通知」的 Webhook）。</p>
-						<div class="wclon-flex-card-layout">
-						<div class="wclon-flex-card-layout__fields">
-						<table class="form-table">
-							<tr>
-								<th scope="row">啟用</th>
-								<td>
-									<label><input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[line_bind_coupon_enabled]" value="1" <?php checked( $coupon_enabled, 1 ); ?>> 綁定 LINE 成功後自動發送優惠券</label>
-								</td>
-							</tr>
-							<tr>
-								<th scope="row"><label for="wclon_coupon_type">折扣類型</label></th>
-								<td>
-									<select id="wclon_coupon_type" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[line_bind_coupon_type]">
-										<option value="fixed_cart" <?php selected( $coupon_type, 'fixed_cart' ); ?>>固定金額折扣</option>
-										<option value="percent"    <?php selected( $coupon_type, 'percent' ); ?>>百分比折扣</option>
-									</select>
-								</td>
-							</tr>
-							<tr>
-								<th scope="row"><label for="wclon_coupon_amount">折扣數值</label></th>
-								<td>
-									<input type="number" id="wclon_coupon_amount" step="0.01" min="0" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[line_bind_coupon_amount]" value="<?php echo esc_attr( $coupon_amount ); ?>" class="small-text">
-									<p class="description">固定金額折扣請填新台幣金額；百分比折扣請填 0-100 之間的數字。</p>
-								</td>
-							</tr>
-							<tr>
-								<th scope="row"><label for="wclon_coupon_expiry">有效天數</label></th>
-								<td>
-									<input type="number" id="wclon_coupon_expiry" min="0" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[line_bind_coupon_expiry_days]" value="<?php echo esc_attr( $coupon_expiry ); ?>" class="small-text">
-									<p class="description">優惠券發出後幾天內有效，0 表示不過期。</p>
-								</td>
-							</tr>
-							<tr>
-								<th scope="row"><label for="wclon_coupon_min_spend">最低消費金額</label></th>
-								<td>
-									<input type="number" id="wclon_coupon_min_spend" step="0.01" min="0" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[line_bind_coupon_min_spend]" value="<?php echo esc_attr( $coupon_min_spend ); ?>" class="small-text">
-									<p class="description">訂單金額需達此門檻才可使用，0 表示無最低消費限制。</p>
-								</td>
-							</tr>
-							<tr>
-								<th scope="row"><label for="wclon_bind_coupon_header_color">推播標題色</label></th>
-								<td>
-									<input type="text" id="wclon_bind_coupon_header_color" class="wclon-color-field" data-wclon-color-mirror="wclon_header_color" value="<?php echo esc_attr( $header_color ); ?>" data-default-color="#00C300">
-									<p class="description">與「顧客通知」分頁「Flex Message 樣式」卡片的「訂單狀態通知標題色」是同一個設定，這裡只是方便在「訂單通知」模組關閉、切不到該分頁時仍可調整。</p>
-								</td>
-							</tr>
-							<tr>
-								<th scope="row"><label for="wclon_bind_coupon_title">推播標題</label></th>
-								<td><input type="text" id="wclon_bind_coupon_title" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[bind_coupon_title]" value="<?php echo esc_attr( $bind_coupon_title ); ?>" class="regular-text" placeholder="🎁 專屬優惠券"></td>
-							</tr>
-							<tr>
-								<th scope="row"><label for="wclon_bind_coupon_greeting">開頭問候語</label></th>
-								<td><input type="text" id="wclon_bind_coupon_greeting" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[bind_coupon_greeting]" value="<?php echo esc_attr( $bind_coupon_greeting ); ?>" class="regular-text" placeholder="感謝您綁定 LINE 帳號！"></td>
-							</tr>
-							<tr>
-								<th scope="row"><label for="wclon_bind_coupon_desc">說明文字</label></th>
-								<td>
-									<textarea id="wclon_bind_coupon_desc" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[bind_coupon_desc]" rows="2" class="large-text"><?php echo esc_textarea( $bind_coupon_desc ); ?></textarea>
-									<p class="description">顯示在優惠券代碼／折扣內容下方的補充說明。</p>
-								</td>
-							</tr>
-							<tr>
-								<th scope="row"><label for="wclon_bind_coupon_button_text">按鈕文字</label></th>
-								<td><input type="text" id="wclon_bind_coupon_button_text" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[bind_coupon_button_text]" value="<?php echo esc_attr( $bind_coupon_button_text ); ?>" class="regular-text" placeholder="前往購物"></td>
-							</tr>
-						</table>
-						</div>
-						<div class="wclon-flex-card-layout__preview">
-							<p class="description" style="margin:0 0 12px;">選項變更時即時更新；實際樣式以 LINE App 顯示為準。</p>
-							<div id="wclon_flex_preview_coupon" class="wclon-flex-preview"></div>
-						</div>
-						</div>
-					</div>
 				</div><!-- /wclon-tab-line -->
 
 				<!-- ══ Google Tab ══ -->
@@ -1079,20 +1032,9 @@ class WCLON_Settings {
 
 				<!-- ══ 顧客通知 Tab（仍屬於這個 <form>／wclon_settings） ══ -->
 				<div class="wclon-tab-pane" data-tab="customer" style="display:none;">
-					<div class="wclon-card">
-						<h2 class="wclon-card__title">LINE 串接設定 <span class="wclon-shared-tag">共用</span></h2>
-						<table class="form-table">
-							<tr>
-								<th scope="row"><label>Messaging API<br>Channel Access Token</label></th>
-								<td>
-									<textarea name="<?php echo esc_attr( self::OPTION_KEY ); ?>[channel_access_token]" rows="3" class="large-text" placeholder="長效 Channel Access Token"><?php echo esc_textarea( self::get( 'channel_access_token' ) ); ?></textarea>
-									<p class="description">在 LINE Developers Console 的 Messaging API channel 頁籤取得（設定步驟見「LINE」分頁的前置作業）。只需填一次，下方「顧客通知」與「管理員群組通知」共用同一組 Token。</p>
-								</td>
-							</tr>
-						</table>
-					</div>
+					<?php if ( ! $token_in_admin ) $render_token_card(); ?>
 
-					<div class="wclon-card">
+					<div class="wclon-card<?php echo esc_attr( $off_notify ); ?>">
 						<h2 class="wclon-card__title">顧客 LINE 訂單通知</h2>
 						<p class="wclon-card__desc">訂單狀態變更時通知下單顧客本人。</p>
 						<table class="form-table">
@@ -1131,58 +1073,128 @@ class WCLON_Settings {
 						</table>
 					</div>
 
+					<div class="wclon-card<?php echo esc_attr( $off_social ); ?>">
+						<h2 class="wclon-card__title">LINE 綁定歡迎優惠券</h2>
+						<p class="wclon-card__desc">首次綁定 LINE 後發送專屬優惠券；未加好友時暫緩，加入後補發（需先設定「管理員通知」的 Webhook）。推播文字與預覽見下方「推播訊息樣式」。</p>
+						<table class="form-table">
+							<tr>
+								<th scope="row">啟用</th>
+								<td>
+									<label><input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[line_bind_coupon_enabled]" value="1" <?php checked( $coupon_enabled, 1 ); ?>> 綁定 LINE 成功後自動發送優惠券</label>
+								</td>
+							</tr>
+							<tr>
+								<th scope="row"><label for="wclon_coupon_type">折扣類型</label></th>
+								<td>
+									<select id="wclon_coupon_type" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[line_bind_coupon_type]">
+										<option value="fixed_cart" <?php selected( $coupon_type, 'fixed_cart' ); ?>>固定金額折扣</option>
+										<option value="percent"    <?php selected( $coupon_type, 'percent' ); ?>>百分比折扣</option>
+									</select>
+								</td>
+							</tr>
+							<tr>
+								<th scope="row"><label for="wclon_coupon_amount">折扣數值</label></th>
+								<td>
+									<input type="number" id="wclon_coupon_amount" step="0.01" min="0" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[line_bind_coupon_amount]" value="<?php echo esc_attr( $coupon_amount ); ?>" class="small-text">
+									<p class="description">固定金額折扣請填新台幣金額；百分比折扣請填 0-100 之間的數字。</p>
+								</td>
+							</tr>
+							<tr>
+								<th scope="row"><label for="wclon_coupon_expiry">有效天數</label></th>
+								<td>
+									<input type="number" id="wclon_coupon_expiry" min="0" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[line_bind_coupon_expiry_days]" value="<?php echo esc_attr( $coupon_expiry ); ?>" class="small-text">
+									<p class="description">優惠券發出後幾天內有效，0 表示不過期。</p>
+								</td>
+							</tr>
+							<tr>
+								<th scope="row"><label for="wclon_coupon_min_spend">最低消費金額</label></th>
+								<td>
+									<input type="number" id="wclon_coupon_min_spend" step="0.01" min="0" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[line_bind_coupon_min_spend]" value="<?php echo esc_attr( $coupon_min_spend ); ?>" class="small-text">
+									<p class="description">訂單金額需達此門檻才可使用，0 表示無最低消費限制。</p>
+								</td>
+							</tr>
+						</table>
+					</div>
+
 					<div class="wclon-card">
-						<h2 class="wclon-card__title">Flex Message 樣式</h2>
+						<h2 class="wclon-card__title">推播訊息樣式</h2>
+						<p class="wclon-card__desc">訂單通知與綁定歡迎優惠券的 LINE 卡片外觀與文字。</p>
 						<div class="wclon-flex-card-layout">
 						<div class="wclon-flex-card-layout__fields">
 						<table class="form-table">
 							<tr>
-								<th scope="row"><label for="wclon_header_color">訂單狀態通知標題色</label></th>
+								<th scope="row"><label for="wclon_header_color">標題色</label></th>
 								<td>
 									<input type="text" id="wclon_header_color" class="wclon-color-field" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[header_color]" value="<?php echo esc_attr( $header_color ); ?>" data-default-color="#00C300">
-									<p class="description">預設會依訂單狀態自動套用顏色（處理中綠色、完成藍色、取消灰色⋯），設定後固定使用此色。</p>
+									<p class="description">訂單狀態通知、物流通知與綁定歡迎優惠券共用。</p>
 								</td>
 							</tr>
-							<tr>
+							<tr class="wclon-form-subhead<?php echo esc_attr( $off_notify ); ?>"><th colspan="2">訂單通知</th></tr>
+							<tr class="<?php echo esc_attr( trim( $off_notify ) ); ?>">
 								<th scope="row"><label for="wclon_note_color">備注通知標題色</label></th>
 								<td>
 									<input type="text" id="wclon_note_color" class="wclon-color-field" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[note_color]" value="<?php echo esc_attr( $note_color ); ?>" data-default-color="#FF9800">
 									<p class="description">預設橘色（#FF9800）。</p>
 								</td>
 							</tr>
-							<tr>
+							<tr class="<?php echo esc_attr( trim( $off_notify ) ); ?>">
 								<th scope="row"><label for="wclon_button_text">訂單按鈕文字</label></th>
 								<td>
 									<input type="text" id="wclon_button_text" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[button_text]" value="<?php echo esc_attr( $button_text ); ?>" class="regular-text" placeholder="查看訂單詳情">
 								</td>
 							</tr>
-							<tr>
+							<tr class="<?php echo esc_attr( trim( $off_notify ) ); ?>">
 								<th scope="row"><label for="wclon_greeting_template">問候語</label></th>
 								<td>
 									<input type="text" id="wclon_greeting_template" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[greeting_template]" value="<?php echo esc_attr( $greeting_template ); ?>" class="regular-text" placeholder="您好，{customer_name}！">
 									<p class="description">訂單狀態通知與備注通知開頭共用同一句問候語，可用變數：<code>{customer_name}</code>（顧客姓名）、<code>{site_name}</code>（網站名稱）。</p>
 								</td>
 							</tr>
-							<tr>
+							<tr class="<?php echo esc_attr( trim( $off_notify ) ); ?>">
 								<th scope="row"><label for="wclon_note_title">備注通知標題文字</label></th>
 								<td>
 									<input type="text" id="wclon_note_title" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[note_title]" value="<?php echo esc_attr( $note_title ); ?>" class="regular-text" placeholder="店家留言">
 								</td>
 							</tr>
-							<tr>
+							<tr class="<?php echo esc_attr( trim( $off_notify ) ); ?>">
 								<th scope="row"><label for="wclon_logistics_title">物流通知標題文字</label></th>
 								<td>
 									<input type="text" id="wclon_logistics_title" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[logistics_title]" value="<?php echo esc_attr( $logistics_title ); ?>" class="regular-text" placeholder="🚚 物流狀態更新">
 								</td>
+							</tr>
+							<tr class="wclon-form-subhead<?php echo esc_attr( $off_social ); ?>"><th colspan="2">綁定歡迎優惠券</th></tr>
+							<tr class="<?php echo esc_attr( trim( $off_social ) ); ?>">
+								<th scope="row"><label for="wclon_bind_coupon_title">推播標題</label></th>
+								<td><input type="text" id="wclon_bind_coupon_title" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[bind_coupon_title]" value="<?php echo esc_attr( $bind_coupon_title ); ?>" class="regular-text" placeholder="🎁 專屬優惠券"></td>
+							</tr>
+							<tr class="<?php echo esc_attr( trim( $off_social ) ); ?>">
+								<th scope="row"><label for="wclon_bind_coupon_greeting">開頭問候語</label></th>
+								<td><input type="text" id="wclon_bind_coupon_greeting" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[bind_coupon_greeting]" value="<?php echo esc_attr( $bind_coupon_greeting ); ?>" class="regular-text" placeholder="感謝您綁定 LINE 帳號！"></td>
+							</tr>
+							<tr class="<?php echo esc_attr( trim( $off_social ) ); ?>">
+								<th scope="row"><label for="wclon_bind_coupon_desc">說明文字</label></th>
+								<td>
+									<textarea id="wclon_bind_coupon_desc" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[bind_coupon_desc]" rows="2" class="large-text"><?php echo esc_textarea( $bind_coupon_desc ); ?></textarea>
+									<p class="description">顯示在優惠券代碼／折扣內容下方的補充說明。</p>
+								</td>
+							</tr>
+							<tr class="<?php echo esc_attr( trim( $off_social ) ); ?>">
+								<th scope="row"><label for="wclon_bind_coupon_button_text">按鈕文字</label></th>
+								<td><input type="text" id="wclon_bind_coupon_button_text" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[bind_coupon_button_text]" value="<?php echo esc_attr( $bind_coupon_button_text ); ?>" class="regular-text" placeholder="前往購物"></td>
 							</tr>
 						</table>
 						</div>
 						<div class="wclon-flex-card-layout__preview">
 							<p style="margin:0 0 8px;"><label for="wclon_flex_preview_type" style="font-weight:600;">預覽訊息類型</label></p>
 							<select id="wclon_flex_preview_type">
+								<?php if ( $cust_line ) : ?>
 								<option value="status">訂單狀態通知</option>
 								<option value="note">備注通知</option>
 								<option value="logistics">物流狀態通知</option>
+								<?php endif; ?>
+								<?php if ( $mod_social ) : ?>
+								<option value="coupon">綁定歡迎優惠券</option>
+								<?php endif; ?>
 							</select>
 							<p class="description" style="max-width:260px;margin:8px 0 12px;">選項變更時即時更新；實際樣式以 LINE App 顯示為準。</p>
 							<div id="wclon_flex_preview_customer" class="wclon-flex-preview"></div>
@@ -1190,7 +1202,7 @@ class WCLON_Settings {
 						</div>
 					</div>
 
-					<div class="wclon-card">
+					<div class="wclon-card<?php echo esc_attr( $off_notify ); ?>">
 						<h2 class="wclon-card__title">測試推播（顧客）</h2>
 						<p class="wclon-card__desc">發送測試訊息，確認訂單卡片外觀與 Token。</p>
 						<table class="form-table" style="max-width:600px;">
@@ -1217,6 +1229,7 @@ class WCLON_Settings {
 			<?php if ( $mod_notify ) : ?>
 			<!-- ══ 管理員通知 Tab（獨立 <form>／option，共用主表單的「儲存設定」按鈕，見下方 JS） ══ -->
 			<div class="wclon-admin-wrap wclon-tab-pane" data-tab="adminline" style="display:none;">
+				<?php if ( $token_in_admin ) $render_token_card( 'wclon-settings-form' ); ?>
 				<?php WCAN_Settings::render_tab_content(); ?>
 			</div><!-- /wclon-tab-adminline -->
 			<?php endif; ?>

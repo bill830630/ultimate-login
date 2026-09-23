@@ -129,7 +129,7 @@
 		// 拆頁籤/搬頁籤時就踩過同一種問題，這次用「從 DOM 反推」一次徹底解決，不用每次異動
 		// 頁籤清單都要記得同步改這裡）。
 		var validTabs = Array.prototype.map.call(subtabs, function (t) { return t.dataset.wclonTab; });
-		showTab(saved && validTabs.indexOf(saved) !== -1 ? saved : 'general');
+		showTab(saved && validTabs.indexOf(saved) !== -1 ? saved : validTabs[0]);
 	} catch (e) {}
 
 	// ── 顧客通知／管理員通知／Turnstile／系統信件／模組共用同一顆「儲存設定」按鈕 ──
@@ -256,25 +256,6 @@
 			});
 		});
 
-		// 「綁定歡迎優惠券」卡片的「推播標題色」是純 UI 鏡射欄位（沒有 name，
-		// 不會被送出）：真正送出的值一律來自「顧客通知」分頁的 wclon_header_color；
-		// 「訂單通知」模組關閉時該分頁的 nav-tab 連結不會輸出、切不過去，這個鏡射欄位
-		// 讓管理員仍能在 LINE 分頁改到同一個值。改這裡就同步寫回目標欄位（含更新
-		// wp-color-picker 本身的狀態，不只是底層 input 的 value），改「顧客通知」分頁
-		// 那顆則不會回頭同步（該分頁可見時代表模組是開的，直接在那裡改就好）。
-		$('.wclon-color-field[data-wclon-color-mirror]').each(function () {
-			var mirrorEl = this;
-			var targetEl = document.getElementById(mirrorEl.getAttribute('data-wclon-color-mirror'));
-			if (!targetEl) return;
-			mirrorEl.addEventListener('input', function () {
-				if (targetEl.value === mirrorEl.value) return;
-				// targetEl 也是 .wclon-color-field，上面的 .each() 已經在同一個 tick
-				// 裡先跑過、初始化成 wp-color-picker 了，這裡直接呼叫它的 API 更新色票
-				// 本身的狀態，不能只改底層 input 的 value（wp-color-picker 不會自己偵測到）。
-				$(targetEl).wpColorPicker('color', mirrorEl.value);
-				targetEl.dispatchEvent(new Event('input', { bubbles: true }));
-			});
-		});
 	});
 
 	// ── Flex Message 樣式即時預覽 ──
@@ -344,6 +325,10 @@
 			if (!box || !typeSel) return;
 
 			var type       = typeSel.value;
+			if ('coupon' === type) {
+				box.innerHTML = couponBubble();
+				return;
+			}
 			var buttonText = val('wclon_button_text', '查看訂單詳情');
 			var greeting   = renderTemplate(val('wclon_greeting_template', '您好，{customer_name}！'), {
 				customer_name: DUMMY.customerName,
@@ -389,10 +374,7 @@
 			box.innerHTML = bubbleHtml(color, title, bodyHtml, buttonText);
 		}
 
-		function renderCouponPreview() {
-			var box = document.getElementById('wclon_flex_preview_coupon');
-			if (!box) return;
-
+		function couponBubble() {
 			var color   = val('wclon_header_color', '#00C300');
 			var title   = val('wclon_bind_coupon_title', '🎁 專屬優惠券');
 			var btnText = val('wclon_bind_coupon_button_text', '前往購物');
@@ -411,33 +393,45 @@
 				row('使用效期', DUMMY.couponExpiry) +
 				'<div class="wclon-flex-preview__desc">' + esc(description) + '</div>';
 
-			box.innerHTML = bubbleHtml(color, title, bodyHtml, btnText);
+			return bubbleHtml(color, title, bodyHtml, btnText);
 		}
 
-		var customerFieldIds = ['wclon_header_color', 'wclon_note_color', 'wclon_button_text', 'wclon_greeting_template', 'wclon_note_title', 'wclon_logistics_title'];
-		var couponFieldIds   = ['wclon_header_color', 'wclon_bind_coupon_title', 'wclon_bind_coupon_greeting', 'wclon_bind_coupon_desc', 'wclon_bind_coupon_button_text', 'wclon_coupon_type', 'wclon_coupon_amount'];
+		// 欄位 id → 編輯時預覽要切到哪一種訊息（null＝共用欄位，不切換）
+		var fieldPreviewType = {
+			wclon_header_color: null,
+			wclon_note_color: 'note',
+			wclon_button_text: 'status',
+			wclon_greeting_template: 'status',
+			wclon_note_title: 'note',
+			wclon_logistics_title: 'logistics',
+			wclon_bind_coupon_title: 'coupon',
+			wclon_bind_coupon_greeting: 'coupon',
+			wclon_bind_coupon_desc: 'coupon',
+			wclon_bind_coupon_button_text: 'coupon',
+			wclon_coupon_type: 'coupon',
+			wclon_coupon_amount: 'coupon'
+		};
 
 		var typeSel = document.getElementById('wclon_flex_preview_type');
 		if (typeSel) {
 			typeSel.addEventListener('change', renderCustomerPreview);
 		}
 
-		customerFieldIds.forEach(function (id) {
+		Object.keys(fieldPreviewType).forEach(function (id) {
 			var el = document.getElementById(id);
 			if (!el) return;
-			el.addEventListener('input', renderCustomerPreview);
-			el.addEventListener('change', renderCustomerPreview);
-		});
-
-		couponFieldIds.forEach(function (id) {
-			var el = document.getElementById(id);
-			if (!el) return;
-			el.addEventListener('input', renderCouponPreview);
-			el.addEventListener('change', renderCouponPreview);
+			var onEdit = function () {
+				var want = fieldPreviewType[id];
+				if (want && typeSel && typeSel.value !== want && typeSel.querySelector('option[value="' + want + '"]')) {
+					typeSel.value = want;
+				}
+				renderCustomerPreview();
+			};
+			el.addEventListener('input', onEdit);
+			el.addEventListener('change', onEdit);
 		});
 
 		renderCustomerPreview();
-		renderCouponPreview();
 	}());
 
 	// ── 測試推播 ──
