@@ -1,6 +1,6 @@
 # 終極登入 (Ultimate Login)
 
-WooCommerce 用外掛：LINE / Google / Apple 社交登入，訂單狀態變更時透過 LINE 推播通知顧客，並可推播新訂單通知到管理員 LINE 群組。
+LINE / Google / Apple 社交登入，並可推播網站表單到管理員 LINE 群組；安裝 WooCommerce 時另外提供訂單狀態推播給顧客與新訂單群組通知（WooCommerce 為選用）。
 
 ## 功能
 

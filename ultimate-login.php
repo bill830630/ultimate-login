@@ -2,11 +2,10 @@
 /**
  * Plugin Name: Ultimate Login
  * Plugin URI:  https://example.com
- * Description: 讓顧客透過 LINE、Google、Apple 登入綁定帳號，並在 WooCommerce 訂單狀態變更時，透過 LINE Messaging API 自動推播訂單通知給顧客；同時可推播新訂單通知到管理員/員工共用的 LINE 群組或聊天室。
- * Version:     1.41.2
+ * Description: 讓使用者透過 LINE、Google、Apple 登入綁定帳號，並可推播網站表單到管理員/員工共用的 LINE 群組。安裝 WooCommerce 時另外提供訂單狀態推播給顧客、新訂單群組通知、綁定歡迎優惠券與結帳頁綁定列。
+ * Version:     1.42.0
  * Author:      NiBill
  * Text Domain: ultimate-login
- * Requires Plugins: woocommerce
  * Requires PHP: 8.0
  * WC tested up to: 11.1
  */
@@ -45,12 +44,14 @@ if ( defined( 'WCLON_VERSION' ) ) {
 	return;
 }
 
-define( 'WCLON_VERSION', '1.41.2' );
+define( 'WCLON_VERSION', '1.42.0' );
 define( 'WCLON_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WCLON_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 // 會員中心「帳號綁定」獨立頁面的 WC Account endpoint slug
 define( 'WCLON_ACCOUNT_ENDPOINT', 'social-login' );
 
+// WooCommerce 相容層（v1.42.0 起 WooCommerce 改為選用）
+require_once WCLON_PLUGIN_DIR . 'includes/class-wclon-wc.php';
 require_once WCLON_PLUGIN_DIR . 'includes/class-wclon-settings.php';
 require_once WCLON_PLUGIN_DIR . 'includes/class-wclon-license.php';
 require_once WCLON_PLUGIN_DIR . 'includes/class-wclon-oauth.php';
@@ -70,12 +71,11 @@ require_once WCLON_PLUGIN_DIR . 'includes/class-wclon-turnstile.php';
 require_once WCLON_PLUGIN_DIR . 'includes/class-wclon-updater.php';
 
 add_action( 'plugins_loaded', function () {
-	if ( ! class_exists( 'WooCommerce' ) ) {
-		add_action( 'admin_notices', function () {
-			echo '<div class="notice notice-error"><p>WC LINE Order Notify 需要啟用 WooCommerce 才能運作。</p></div>';
-		} );
-		return;
-	}
+	// v1.42.0 起 WooCommerce 改為選用：沒有安裝時照常載入，只有 WooCommerce 才有的功能
+	// （顧客訂單通知、綁定歡迎優惠券、結帳／購物車綁定列、會員中心「帳號綁定」頁）不註冊，
+	// 見 includes/class-wclon-wc.php。
+	$wclon_has_wc = WCLON_WC::active();
+
 	WCLON_Settings::init();
 	WCLON_License::init();
 	WCLON_Updater::init();
@@ -95,7 +95,10 @@ add_action( 'plugins_loaded', function () {
 		WCLON_Apple_Login::init();
 	}
 	if ( WCLON_Settings::module_enabled( 'order_notify' ) ) {
-		WCLON_Notifier::init();
+		// 顧客訂單通知全部建立在 WooCommerce 訂單上；管理員群組通知還有網站表單推播，不需要 WooCommerce
+		if ( $wclon_has_wc ) {
+			WCLON_Notifier::init();
+		}
 		WCAN_Settings::init();
 		WCAN_Notifier::init();
 	}
@@ -258,6 +261,8 @@ add_action( 'plugins_loaded', function () {
 		}, 20 );
 	}
 
+	// 以下三個 hook（結帳頁、購物車頁綁定列、隱藏 WC 原生登入提示）只有 WooCommerce 才有
+	if ( $wclon_has_wc ) {
 	// 結帳頁綁定列（v1.30.0 起是 LINE 與 Google/Apple 兩個獨立區塊，見
 	// WCLON_Settings::render_social_bar()）。
 	//
@@ -292,6 +297,7 @@ add_action( 'plugins_loaded', function () {
 		}
 		return $pre;
 	} );
+	} // if ( $wclon_has_wc )
 	} // if ( $wclon_mod_social )
 
 	// 會員中心「帳號綁定」獨立頁面（v1.9.4 起與「帳戶詳細資料」分開）。
@@ -303,7 +309,9 @@ add_action( 'plugins_loaded', function () {
 	// Email 訂單通知。$wclon_account_social_enabled() 另外多檢查一次「社交登入」模組是否啟用，
 	// 讓「綁定帳號」區塊在該模組關閉時，顯示的是下方「目前尚未開放社群帳號綁定。」提示，而不是
 	// 一個沒有任何 provider 可以渲染、卻還留著外層容器的空區塊。
-	if ( $wclon_mod_social || $wclon_mod_notify ) {
+	// 這一頁是 WooCommerce「我的帳號」的 endpoint，沒有 WooCommerce 時整段不註冊；
+	// 綁定改用短代碼 [wclon_line_connect]／[wclon_google_connect]／[wclon_apple_connect]。
+	if ( $wclon_has_wc && ( $wclon_mod_social || $wclon_mod_notify ) ) {
 	$wclon_account_social_enabled = function () use ( $wclon_mod_social ) {
 		if ( ! $wclon_mod_social ) {
 			return false;

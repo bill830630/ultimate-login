@@ -1,6 +1,8 @@
 # 終極登入 (Ultimate Login)
 
-讓顧客透過 LINE 或 Google 登入綁定帳號，並在 WooCommerce 訂單狀態變更時自動透過 LINE 推播通知；同時可推播新訂單通知到管理員/員工共用的 LINE 群組或聊天室。
+讓使用者透過 LINE、Google、Apple 登入綁定帳號，並可把網站表單推播到管理員/員工共用的 LINE 群組。安裝 WooCommerce 時，另外提供訂單狀態推播給顧客、新訂單群組通知、綁定歡迎優惠券與結帳頁綁定列。
+
+沒有安裝 WooCommerce 的網站也能使用：社交登入、網站表單群組通知、Turnstile 人機驗證、系統信件照常運作，訂單相關功能會自動關閉，設定頁也不會顯示。
 
 ## 功能
 
@@ -57,6 +59,11 @@
 - 短代碼 `[wclon_line_connect]` / `[wclon_google_connect]` / `[wclon_apple_connect]` 可在任何頁面顯示個別完整版綁定按鈕；`[wclon_social_bar]` 可顯示跟結帳頁一樣的綁定列（例如放在區塊版購物車頁）。
 
 ## 變更紀錄
+
+### 1.42.0
+- 沒有安裝 WooCommerce 的網站也能安裝啟用。可以使用的功能：LINE／Google／Apple 登入（WordPress 登入頁與短代碼）、管理員 LINE 群組的網站表單通知、Turnstile 人機驗證、系統信件。
+- 沒有 WooCommerce 時會自動關閉訂單相關功能：顧客訂單通知、新訂單群組通知、LINE 綁定歡迎優惠券、購物車／結帳頁綁定列、會員中心「帳號綁定」頁；設定頁也不會顯示這些選項。這些功能原本的設定會保留，之後安裝 WooCommerce 就會恢復。
+- 沒有 WooCommerce 時，會員綁定社群帳號請使用短代碼 `[wclon_line_connect]`／`[wclon_google_connect]`／`[wclon_apple_connect]`；設定頁改由管理員（Administrator）操作。
 
 ### 1.41.2
 - 所有 LINE 通知的標題與內容移除表情符號（物流通知、綁定歡迎優惠券、管理員新訂單與網站表單通知）；已儲存的通知文字中的表情符號也會在更新後自動移除。

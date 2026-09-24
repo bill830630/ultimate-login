@@ -97,7 +97,9 @@ class WCLON_Settings {
 			),
 			'order_notify' => array(
 				'label' => '訂單通知',
-				'desc'  => '訂單狀態、備注、物流狀態推播給下單顧客本人；新訂單推播給管理員/員工共用的 LINE 群組。關閉後「顧客通知」「管理員通知」頁籤整個不會出現。',
+				'desc'  => WCLON_WC::active()
+					? '訂單狀態、備注、物流狀態推播給下單顧客本人；新訂單與網站表單推播給管理員/員工共用的 LINE 群組。關閉後「顧客通知」「管理員通知」頁籤整個不會出現。'
+					: '網站表單送出時推播給管理員/員工共用的 LINE 群組（訂單相關推播需要 WooCommerce）。關閉後「管理員通知」頁籤整個不會出現。',
 			),
 			'system_email' => array(
 				'label' => '系統信件',
@@ -188,10 +190,15 @@ class WCLON_Settings {
 		if ( ! self::$page_hook || self::$page_hook !== $hook ) {
 			return;
 		}
-		// 先載入 WooCommerce 後台樣式，按鈕與表格沿用原生元件；本外掛 CSS 只補頁面佈局。
-		wp_enqueue_style( 'woocommerce_admin_styles' );
+		// 有 WooCommerce 時先載入它的後台樣式，按鈕與表格沿用原生元件；本外掛 CSS 只補頁面佈局。
+		// 沒有 WooCommerce 時不能列為相依：相依的 handle 沒註冊，wclon-admin.css 會整個不輸出。
+		$admin_deps = array();
+		if ( WCLON_WC::active() ) {
+			wp_enqueue_style( 'woocommerce_admin_styles' );
+			$admin_deps[] = 'woocommerce_admin_styles';
+		}
 		wp_enqueue_style( 'wclon-frontend', WCLON_PLUGIN_URL . 'assets/css/wclon-frontend.css', array(), WCLON_VERSION );
-		wp_enqueue_style( 'wclon-admin', WCLON_PLUGIN_URL . 'assets/css/wclon-admin.css', array( 'woocommerce_admin_styles' ), filemtime( WCLON_PLUGIN_DIR . 'assets/css/wclon-admin.css' ) );
+		wp_enqueue_style( 'wclon-admin', WCLON_PLUGIN_URL . 'assets/css/wclon-admin.css', $admin_deps, filemtime( WCLON_PLUGIN_DIR . 'assets/css/wclon-admin.css' ) );
 		// WordPress 內建色票選擇器（Iris），供 Flex Message 標題色欄位使用：比原生 <input type="color">
 		// 多一個可直接輸入/貼上色號的文字欄位，不用額外引入第三方函式庫或自己刻一個。
 		wp_enqueue_style( 'wp-color-picker' );
@@ -432,7 +439,7 @@ class WCLON_Settings {
 		$amount = (float) $amount;
 		return 'percent' === $type
 			? rtrim( rtrim( sprintf( '%.2f', $amount ), '0' ), '.' ) . '%'
-			: html_entity_decode( wp_strip_all_tags( wc_price( $amount ) ) );
+			: ( function_exists( 'wc_price' ) ? html_entity_decode( wp_strip_all_tags( wc_price( $amount ) ) ) : number_format_i18n( $amount ) );
 	}
 
 	/**
@@ -467,7 +474,7 @@ class WCLON_Settings {
 		$internal_desc = ''
 	) {
 		$amount = (float) $amount;
-		if ( $amount <= 0 ) {
+		if ( $amount <= 0 || ! WCLON_WC::active() ) {
 			return null;
 		}
 		$user = get_userdata( $user_id );
@@ -550,7 +557,7 @@ class WCLON_Settings {
 
 		if ( $is_owner ) {
 			add_menu_page(
-				'快捷鍵', '快捷鍵', 'manage_woocommerce', $parent_slug,
+				'快捷鍵', '快捷鍵', WCLON_WC::capability(), $parent_slug,
 				array( __CLASS__, 'render_page' ), self::SHORTCUT_ICON, 56
 			);
 			remove_submenu_page( $parent_slug, $parent_slug );
@@ -562,7 +569,7 @@ class WCLON_Settings {
 		// remove_submenu_page( $parent_slug, $parent_slug )——那會刪掉 owner（終極電商）
 		// 的第一筆子選單「儀表板」。
 		self::$page_hook = add_submenu_page(
-			$parent_slug, '終極登入', '終極登入', 'manage_woocommerce',
+			$parent_slug, '終極登入', '終極登入', WCLON_WC::capability(),
 			'wclon-settings', array( __CLASS__, 'render_page' )
 		);
 	}
@@ -655,8 +662,11 @@ class WCLON_Settings {
 
 	public static function ajax_test_push() {
 		check_ajax_referer( 'wclon_admin_action', 'nonce' );
-		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+		if ( ! current_user_can( WCLON_WC::capability() ) ) {
 			wp_send_json_error( array( 'message' => '權限不足。' ) );
+		}
+		if ( ! WCLON_WC::active() ) {
+			wp_send_json_error( array( 'message' => '顧客訂單通知需要 WooCommerce。' ) );
 		}
 
 		$line_user_id = sanitize_text_field( wp_unslash( $_POST['line_user_id'] ?? '' ) );
@@ -681,7 +691,7 @@ class WCLON_Settings {
 	// ─── 設定頁渲染 ─────────────────────────────────────────────────────────
 
 	public static function render_page() {
-		$statuses            = wc_get_order_statuses();
+		$statuses            = function_exists( 'wc_get_order_statuses' ) ? wc_get_order_statuses() : array();
 		$selected_statuses   = (array) self::get( 'statuses', array( 'wc-processing' ) );
 		$callback_url        = home_url( '/?wclon_action=callback' );
 		$google_callback_url = home_url( '/?wclon_action=google_callback' );
@@ -739,7 +749,11 @@ class WCLON_Settings {
 		// 一樣不出現（pane 仍照常渲染，理由同上）。
 		// 「顧客通知」的內容全部建立在顧客綁定 LINE 之上（顧客 LINE 訂單通知需要兩個模組都開；
 		// LINE 綁定歡迎優惠券屬社交登入），所以跟著社交登入模組；「管理員通知」只跟訂單通知。
-		$cust_line  = $mod_notify && $mod_social;
+		// 沒有 WooCommerce 時，顧客通知頁籤的內容（顧客 LINE 訂單通知、綁定歡迎優惠券）全部用不到，
+		// 整個頁籤不出現；欄位照常輸出（隱藏），理由同上。
+		$has_wc        = WCLON_WC::active();
+		$show_customer = $mod_social && $has_wc;
+		$cust_line     = $mod_notify && $show_customer;
 		$tab_groups = array();
 		if ( $mod_social ) {
 			$tab_groups['general'] = array( 'label' => '一般設定', 'tabs' => array( 'general' => '一般設定' ) );
@@ -747,16 +761,17 @@ class WCLON_Settings {
 		}
 		if ( $mod_notify || $mod_social ) {
 			$notify_tabs = array();
-			if ( $mod_social ) $notify_tabs['customer'] = '顧客通知';
+			if ( $show_customer ) $notify_tabs['customer'] = '顧客通知';
 			if ( $mod_notify ) $notify_tabs['adminline'] = '管理員通知';
 			$tab_groups['notifications'] = array( 'label' => '通知', 'tabs' => $notify_tabs );
 		}
 		// 模組關閉的卡片／欄位列：仍輸出（同一張表單，避免儲存時被清空），只是隱藏
 		$off_notify = $cust_line ? '' : ' wclon-module-off';
-		$off_social = $mod_social ? '' : ' wclon-module-off';
+		$off_social = $show_customer ? '' : ' wclon-module-off';
+		$off_wc     = $has_wc ? '' : ' wclon-module-off';
 		// Channel Access Token 顧客與管理員群組通知共用。只開訂單通知時顧客通知頁籤不存在，
 		// 改放到管理員通知頁籤（該處在主表單之外，欄位用 form 屬性歸回主表單）；任何情況都只輸出一次。
-		$token_in_admin = $mod_notify && ! $mod_social;
+		$token_in_admin = $mod_notify && ! $show_customer;
 		$render_token_card = function ( $form_attr = '' ) {
 			?>
 					<div class="wclon-card">
@@ -810,7 +825,7 @@ class WCLON_Settings {
 
 				<!-- ══ 一般設定 Tab ══ -->
 				<div id="wclon-tab-general" class="wclon-tab-pane" data-tab="general" style="display:none;">
-					<div class="wclon-card">
+					<div class="wclon-card<?php echo esc_attr( $off_wc ); ?>">
 						<h2 class="wclon-card__title">社交按鈕顯示位置</h2>
 						<p class="wclon-card__desc">套用至所有已啟用的登入平台（LINE / Google / Apple）。</p>
 						<table class="form-table">
@@ -1106,6 +1121,9 @@ class WCLON_Settings {
 											<?php echo esc_html( $label ); ?>
 										</label>
 									<?php endforeach; ?>
+									<?php if ( ! $statuses ) : foreach ( $selected_statuses as $key ) : ?>
+										<input type="hidden" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[statuses][]" value="<?php echo esc_attr( $key ); ?>">
+									<?php endforeach; endif; ?>
 									<p class="description">勾選的狀態在訂單「轉換到」該狀態時會發送通知。</p>
 								</td>
 							</tr>
@@ -1244,7 +1262,7 @@ class WCLON_Settings {
 								<option value="note">備注通知</option>
 								<option value="logistics">物流狀態通知</option>
 								<?php endif; ?>
-								<?php if ( $mod_social ) : ?>
+								<?php if ( $show_customer ) : ?>
 								<option value="coupon">綁定歡迎優惠券</option>
 								<?php endif; ?>
 							</select>

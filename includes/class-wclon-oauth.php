@@ -28,7 +28,7 @@ class WCLON_OAuth {
 	 */
 	public static function start_state( $transient_prefix ) {
 		$state    = wp_generate_password( 24, false );
-		$redirect = ! empty( $_GET['redirect'] ) ? esc_url_raw( wp_unslash( $_GET['redirect'] ) ) : wc_get_checkout_url(); // phpcs:ignore WordPress.Security.NonceVerification
+		$redirect = ! empty( $_GET['redirect'] ) ? esc_url_raw( wp_unslash( $_GET['redirect'] ) ) : WCLON_WC::default_redirect(); // phpcs:ignore WordPress.Security.NonceVerification
 		$intent   = sanitize_text_field( wp_unslash( $_GET['intent'] ?? 'link' ) ); // phpcs:ignore WordPress.Security.NonceVerification
 		if ( ! in_array( $intent, self::INTENTS, true ) ) {
 			$intent = 'link';

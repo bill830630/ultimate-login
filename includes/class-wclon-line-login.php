@@ -194,7 +194,7 @@ class WCLON_Line_Login {
 			if ( is_user_logged_in() ) {
 				// 已登入（例如點了綁定但帳號尚未綁定）→ 直接綁定
 				if ( WCLON_Settings::email_conflicts( $line_email, get_current_user_id() ) ) {
-					wc_add_notice( '此 LINE 帳號的 Email 與您目前帳號的 Email 不符，無法綁定。', 'error' );
+					WCLON_WC::error_notice( '此 LINE 帳號的 Email 與您目前帳號的 Email 不符，無法綁定。' );
 					wp_safe_redirect( $redirect );
 					exit;
 				}
@@ -226,8 +226,8 @@ class WCLON_Line_Login {
 				// 若 email 是佔位符，導向帳戶詳細資料頁提示補填
 				$has_real_email = $line_email && ! str_contains( $line_email, '@noemail.invalid' );
 				$dest = $has_real_email
-					? wc_get_account_endpoint_url( 'dashboard' )
-					: add_query_arg( 'wclon_new_account', '1', wc_get_account_endpoint_url( 'edit-account' ) );
+					? WCLON_WC::account_url( 'dashboard' )
+					: add_query_arg( 'wclon_new_account', '1', WCLON_WC::account_url( 'edit-account' ) );
 			}
 			wp_safe_redirect( $dest );
 			exit;
@@ -238,12 +238,12 @@ class WCLON_Line_Login {
 		if ( is_user_logged_in() ) {
 			$existing_user_id = self::find_user_by_line_id( $line_user_id );
 			if ( $existing_user_id && $existing_user_id !== get_current_user_id() ) {
-				wc_add_notice( '此 LINE 帳號已綁定其他會員，請先於該會員帳號解除綁定後再試一次。', 'error' );
+				WCLON_WC::error_notice( '此 LINE 帳號已綁定其他會員，請先於該會員帳號解除綁定後再試一次。' );
 				wp_safe_redirect( $redirect );
 				exit;
 			}
 			if ( WCLON_Settings::email_conflicts( $line_email, get_current_user_id() ) ) {
-				wc_add_notice( '此 LINE 帳號的 Email 與您目前帳號的 Email 不符，無法綁定。', 'error' );
+				WCLON_WC::error_notice( '此 LINE 帳號的 Email 與您目前帳號的 Email 不符，無法綁定。' );
 				wp_safe_redirect( $redirect );
 				exit;
 			}
@@ -278,7 +278,7 @@ class WCLON_Line_Login {
 		}
 		$current = self::get_notify_enabled( get_current_user_id() );
 		update_user_meta( get_current_user_id(), self::NOTIFY_META_KEY, $current ? 0 : 1 );
-		wp_safe_redirect( wp_get_referer() ?: wc_get_account_endpoint_url( WCLON_ACCOUNT_ENDPOINT ) );
+		wp_safe_redirect( wp_get_referer() ?: WCLON_WC::account_url( WCLON_ACCOUNT_ENDPOINT ) );
 		exit;
 	}
 
@@ -715,7 +715,7 @@ class WCLON_Line_Login {
 			</div>
 			<?php
 		} else {
-			$bind_url = home_url( '/?wclon_action=login&intent=link&redirect=' . rawurlencode( wc_get_account_endpoint_url( WCLON_ACCOUNT_ENDPOINT ) ) );
+			$bind_url = home_url( '/?wclon_action=login&intent=link&redirect=' . rawurlencode( WCLON_WC::account_url( WCLON_ACCOUNT_ENDPOINT ) ) );
 			?>
 			<div class="wclon-account-social__row">
 				<span class="wclon-connected-status wclon-connected-status--line"><?php echo self::line_icon_green(); // phpcs:ignore WordPress.Security.EscapeOutput ?> LINE</span>
@@ -783,14 +783,14 @@ class WCLON_Line_Login {
 	/* ---------- WC 登入表單按鈕 ---------- */
 
 	public static function echo_wc_login_button() {
-		$redirect = wc_get_account_endpoint_url( 'dashboard' );
+		$redirect = WCLON_WC::account_url( 'dashboard' );
 		echo self::render_line_auth_button( 'login', $redirect, '用 LINE 登入' ); // phpcs:ignore WordPress.Security.EscapeOutput
 	}
 
 	/* ---------- WC 註冊表單按鈕 ---------- */
 
 	public static function echo_wc_register_button() {
-		$redirect = wc_get_page_permalink( 'myaccount' );
+		$redirect = WCLON_WC::myaccount_url();
 		echo self::render_line_auth_button( 'register', $redirect, '用 LINE 快速綁定' ); // phpcs:ignore WordPress.Security.EscapeOutput
 		// 若 LINE OAuth 後帶著 wclon_register=1 回來，顯示引導訊息
 		if ( ! empty( $_GET['wclon_register'] ) ) {
@@ -893,7 +893,7 @@ class WCLON_Line_Login {
 				<td>
 					<code><?php echo esc_html( $coupon_code ); ?></code>
 					<?php
-					$coupon_id = wc_get_coupon_id_by_code( $coupon_code );
+					$coupon_id = function_exists( 'wc_get_coupon_id_by_code' ) ? wc_get_coupon_id_by_code( $coupon_code ) : 0;
 					if ( $coupon_id ) {
 						echo ' <a href="' . esc_url( get_edit_post_link( $coupon_id ) ) . '" target="_blank">查看優惠券</a>';
 					}

@@ -169,7 +169,7 @@ class WCLON_Apple_Login {
 
 			if ( is_user_logged_in() ) {
 				if ( WCLON_Settings::email_conflicts( $apple_email, get_current_user_id() ) ) {
-					wc_add_notice( '此 Apple 帳號的 Email 與您目前帳號的 Email 不符，無法綁定。', 'error' );
+					WCLON_WC::error_notice( '此 Apple 帳號的 Email 與您目前帳號的 Email 不符，無法綁定。' );
 					wp_safe_redirect( $redirect );
 					exit;
 				}
@@ -197,7 +197,7 @@ class WCLON_Apple_Login {
 				// 結帳頁 chip 註冊：完成後留在結帳頁
 				wp_safe_redirect( add_query_arg( 'wclon_apple_connected', '1', $redirect ) );
 			} else {
-				wp_safe_redirect( wc_get_account_endpoint_url( 'dashboard' ) );
+				wp_safe_redirect( WCLON_WC::account_url( 'dashboard' ) );
 			}
 			exit;
 		}
@@ -207,12 +207,12 @@ class WCLON_Apple_Login {
 		if ( is_user_logged_in() ) {
 			$existing_user_id = self::find_user_by_apple_id( $apple_id );
 			if ( $existing_user_id && $existing_user_id !== get_current_user_id() ) {
-				wc_add_notice( '此 Apple 帳號已綁定其他會員，請先於該會員帳號解除綁定後再試一次。', 'error' );
+				WCLON_WC::error_notice( '此 Apple 帳號已綁定其他會員，請先於該會員帳號解除綁定後再試一次。' );
 				wp_safe_redirect( $redirect );
 				exit;
 			}
 			if ( WCLON_Settings::email_conflicts( $apple_email, get_current_user_id() ) ) {
-				wc_add_notice( '此 Apple 帳號的 Email 與您目前帳號的 Email 不符，無法綁定。', 'error' );
+				WCLON_WC::error_notice( '此 Apple 帳號的 Email 與您目前帳號的 Email 不符，無法綁定。' );
 				wp_safe_redirect( $redirect );
 				exit;
 			}
@@ -427,12 +427,12 @@ class WCLON_Apple_Login {
 	}
 
 	public static function echo_wc_login_button() {
-		$redirect = wc_get_account_endpoint_url( 'dashboard' );
+		$redirect = WCLON_WC::account_url( 'dashboard' );
 		echo self::render_apple_auth_button( 'login', $redirect, '用 Apple 登入' ); // phpcs:ignore WordPress.Security.EscapeOutput
 	}
 
 	public static function echo_wc_register_button() {
-		$redirect = wc_get_page_permalink( 'myaccount' );
+		$redirect = WCLON_WC::myaccount_url();
 		echo self::render_apple_auth_button( 'register', $redirect, '用 Apple 快速註冊' ); // phpcs:ignore WordPress.Security.EscapeOutput
 	}
 
@@ -495,7 +495,7 @@ class WCLON_Apple_Login {
 			</div>
 			<?php
 		} else {
-			$bind_url = home_url( '/?wclon_action=apple_login&intent=link&redirect=' . rawurlencode( wc_get_account_endpoint_url( WCLON_ACCOUNT_ENDPOINT ) ) );
+			$bind_url = home_url( '/?wclon_action=apple_login&intent=link&redirect=' . rawurlencode( WCLON_WC::account_url( WCLON_ACCOUNT_ENDPOINT ) ) );
 			?>
 			<div class="wclon-account-social__row">
 				<span class="wclon-connected-status wclon-connected-status--apple"><?php echo self::apple_icon(); // phpcs:ignore WordPress.Security.EscapeOutput ?> Apple</span>

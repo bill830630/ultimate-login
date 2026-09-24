@@ -159,7 +159,7 @@ class WCAN_Settings {
 
 	public static function ajax_test_push() {
 		check_ajax_referer( 'wcan_admin_action', 'nonce' );
-		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+		if ( ! current_user_can( WCLON_WC::capability() ) ) {
 			wp_send_json_error( array( 'message' => '權限不足。' ) );
 		}
 
@@ -194,6 +194,8 @@ class WCAN_Settings {
 		$names       = self::backfill_group_names( $group_ids );
 		$title       = self::get( 'title', '新訂單通知' );
 		$button_text = self::get( 'button_text', '前往後台查看' );
+		// 新訂單推播只有 WooCommerce 才有；沒有時這兩列隱藏（仍輸出，儲存時才不會被清空）
+		$off_wc      = WCLON_WC::active() ? '' : 'wclon-module-off';
 		?>
 		<div class="wclon-callout">
 			<div class="wclon-callout__body">
@@ -214,7 +216,7 @@ class WCAN_Settings {
 				<h2 class="wclon-card__title">啟用與憑證</h2>
 				<p class="wclon-card__desc">新訂單與網站表單推播給店家/員工共用的 LINE 群組。</p>
 				<table class="form-table">
-					<tr>
+					<tr class="<?php echo esc_attr( $off_wc ); ?>">
 						<th scope="row">啟用管理員群組通知</th>
 						<td>
 							<label><input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[enabled]" value="1" <?php checked( self::get( 'enabled', 1 ), 1 ); ?>> 有新訂單時推播到下方已記錄的 LINE 群組/聊天室</label>
@@ -235,7 +237,7 @@ class WCAN_Settings {
 							<p class="description">用來驗證下方 Webhook 收到的請求確實來自 LINE，在 LINE Developers Console 的 Messaging API channel 頁籤即可查到。</p>
 						</td>
 					</tr>
-					<tr>
+					<tr class="<?php echo esc_attr( $off_wc ); ?>">
 						<th scope="row"><label for="wcan_title">新訂單推播標題</label></th>
 						<td><input type="text" id="wcan_title" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[title]" value="<?php echo esc_attr( $title ); ?>" class="regular-text" placeholder="新訂單通知"></td>
 					</tr>
