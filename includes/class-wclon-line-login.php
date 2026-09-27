@@ -762,7 +762,7 @@ class WCLON_Line_Login {
 		}
 		echo self::render_line_auth_button( // phpcs:ignore WordPress.Security.EscapeOutput
 			'login',
-			wp_login_url(),
+			WCLON_OAuth::wp_login_redirect(),
 			'用 LINE 登入'
 		);
 	}

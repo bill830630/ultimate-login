@@ -72,6 +72,16 @@ class WCLON_OAuth {
 		);
 	}
 
+	/**
+	 * wp-login.php 社群登入按鈕登入成功後要去的網址：沿用登入頁的 redirect_to，沒有就進後台
+	 * （非管理人員會被 WooCommerce 轉到我的帳號）。1.42.1 前直接用 wp_login_url()，登入後被導回
+	 * 登入頁，核心不會把已登入的人送走，畫面停在登入表單，看起來像沒登入成功。
+	 */
+	public static function wp_login_redirect() {
+		$to = isset( $_REQUEST['redirect_to'] ) ? trim( wp_unslash( $_REQUEST['redirect_to'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification, WordPress.Security.ValidatedSanitizedInput
+		return '' === $to ? admin_url() : wp_validate_redirect( $to, admin_url() );
+	}
+
 	public static function find_user_by_meta( $meta_key, $value ) {
 		$users = get_users( array(
 			'meta_key'   => $meta_key,

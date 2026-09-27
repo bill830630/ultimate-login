@@ -293,7 +293,7 @@ class WCLON_Google_Login {
 		}
 		echo self::render_google_auth_button( // phpcs:ignore WordPress.Security.EscapeOutput
 			'login',
-			wp_login_url(),
+			WCLON_OAuth::wp_login_redirect(),
 			'用 Google 登入'
 		);
 	}
