@@ -41,6 +41,21 @@ class WCLON_License {
 		);
 	}
 
+	private static function host( $url ) {
+		$host = strtolower( (string) wp_parse_url( (string) $url, PHP_URL_HOST ) );
+		return preg_replace( '/^www\./', '', $host );
+	}
+
+	/**
+	 * 網站網址跟上次驗證成功時綁定的網址不同（測試站轉正式站、整站搬家、複製站台）。
+	 * 選項會跟著資料庫一起被搬過去，快取的「已啟用」不能沿用到新網域（v1.43.2）。
+	 * 用未經過濾的 home 選項比對，避免多語系外掛依語言切換 home_url() 時誤判。
+	 */
+	private static function site_moved( array $data ) {
+		if ( empty( $data['site_url'] ) ) return false;
+		return self::host( $data['site_url'] ) !== self::host( get_option( 'home' ) );
+	}
+
 	private static function request( $endpoint, array $body ) {
 		$response = wp_remote_post(
 			self::API_URL . $endpoint,
@@ -67,6 +82,7 @@ class WCLON_License {
 			'license_not_active'       => '授權已停用。',
 			'missing_fields'           => '授權資料不完整。',
 			'invalid_site_url'         => '網站網址格式不正確。',
+			'domain_mismatch'          => '授權綁定的網域與目前網站不同，請重新啟用授權。',
 		);
 		return $messages[ $code ] ?? '授權驗證失敗，請確認金鑰後再試一次。';
 	}
@@ -98,11 +114,15 @@ class WCLON_License {
 	public static function is_active( $force = false ) {
 		$data = self::data();
 		if ( empty( $data['license_key'] ) ) return false;
-		$now = time();
-		if ( ! $force && ! empty( $data['last_checked'] ) && ( $now - (int) $data['last_checked'] ) < self::CACHE_TTL ) {
-			return in_array( $data['status'] ?? '', array( 'active', 'grace' ), true );
+		$now    = time();
+		$moved  = self::site_moved( $data );
+		$cached = in_array( $data['status'] ?? '', array( 'active', 'grace' ), true );
+		// 換了網域時「已啟用」的快取作廢，要重新問授權伺服器；已經是失效狀態則照常沿用快取，不用每頁都打 API
+		if ( ! $force && ! empty( $data['last_checked'] ) && ( $now - (int) $data['last_checked'] ) < self::CACHE_TTL && ! ( $moved && $cached ) ) {
+			return $cached;
 		}
-		$grace = ! empty( $data['last_success'] ) && ( $now - (int) $data['last_success'] ) < self::GRACE_TTL;
+		// 換了網域不給離線寬限期：前台（不能連線驗證）會直接視為未啟用
+		$grace = ! $moved && ! empty( $data['last_success'] ) && ( $now - (int) $data['last_success'] ) < self::GRACE_TTL;
 		// 前台訪客不等授權伺服器（最長 10 秒逾時）：快取過期時沿用上次結果，重新驗證交給後台頁面、
 		// WP-Cron 或 WP-CLI 請求（admin-ajax 也常是前台呼叫，排除）（v1.39.0）。
 		$can_fetch = ( is_admin() && ! wp_doing_ajax() ) || wp_doing_cron() || ( defined( 'WP_CLI' ) && WP_CLI );
@@ -138,7 +158,10 @@ class WCLON_License {
 		check_admin_referer( 'wclon_license_activate' );
 		$key = strtoupper( sanitize_text_field( wp_unslash( $_POST['license_key'] ?? '' ) ) );
 		if ( '' === $key ) self::redirect( 'missing' );
-		$data     = self::update( array( 'license_key' => $key ) );
+		$changes = array( 'license_key' => $key );
+		// 從別的網站搬過來的 instance_id 還綁在原網站上，換一組新的，讓這個網站算成獨立的一個站台啟用
+		if ( self::site_moved( self::data() ) ) $changes['instance_id'] = wp_generate_uuid4();
+		$data     = self::update( $changes );
 		$response = self::request( '/v1/licenses/activate', self::payload( $data ) );
 		if ( is_wp_error( $response ) ) {
 			self::update( array( 'status' => 'unreachable', 'last_checked' => time(), 'error' => '無法連線授權伺服器。' ) );
