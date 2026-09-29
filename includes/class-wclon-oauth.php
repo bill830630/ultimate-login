@@ -20,7 +20,10 @@ class WCLON_OAuth {
 
 	const COOKIE_PREFIX = 'wclon_oauth_';
 	const STATE_TTL     = 10 * MINUTE_IN_SECONDS;
-	const INTENTS       = array( 'link', 'login', 'register', 'checkout' );
+	const INTENTS       = array( 'link', 'login', 'register', 'checkout', 'verify' );
+
+	/** 目前這次 callback 是不是管理員的憑證驗證（v1.43.0）：值是 provider key，不是就 null */
+	private static $verifying = null;
 
 	/**
 	 * 發放一組 state：transient 存導回網址與 intent，並把 state 綁定到目前的瀏覽器。
@@ -32,6 +35,15 @@ class WCLON_OAuth {
 		$intent   = sanitize_text_field( wp_unslash( $_GET['intent'] ?? 'link' ) ); // phpcs:ignore WordPress.Security.NonceVerification
 		if ( ! in_array( $intent, self::INTENTS, true ) ) {
 			$intent = 'link';
+		}
+		if ( 'verify' === $intent ) {
+			// 驗證只給管理員，且一定要從設定頁的按鈕發起。導回網址固定是設定頁，不吃 $_GET['redirect']。
+			// callback 端不再檢查登入狀態：Apple 的 callback 是跨站 POST，WordPress 的登入 cookie
+			// 帶不過去（SameSite 預設 Lax），這裡的權限檢查加上 state 的瀏覽器綁定就是全部的防線。
+			if ( ! current_user_can( WCLON_WC::capability() ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ?? '' ) ), WCLON_Verify::NONCE_ACTION ) ) {
+				wp_die( esc_html( '驗證連結已失效，請回到終極登入設定頁重新按「驗證」。' ) );
+			}
+			$redirect = admin_url( 'admin.php?page=wclon-settings' );
 		}
 
 		set_transient( $transient_prefix . $state, array(
@@ -66,10 +78,57 @@ class WCLON_OAuth {
 		if ( is_string( $data ) ) {
 			return array( 'redirect' => $data, 'intent' => 'link' );
 		}
+		$intent = $data['intent'] ?? 'link';
+		if ( 'verify' === $intent ) {
+			self::$verifying = strtolower( $provider_label );
+		}
 		return array(
 			'redirect' => $data['redirect'] ?? home_url(),
-			'intent'   => $data['intent'] ?? 'link',
+			'intent'   => $intent,
 		);
+	}
+
+	// ─── 憑證驗證（v1.43.0）─────────────────────────────────────────────────
+	//
+	// 三個 provider 的 callback 共用：finish_state() 拿到 intent=verify 後，callback 照常換 token、
+	// 取使用者 ID，失敗時呼叫 fail()（驗證模式導回設定頁顯示原因，一般模式照舊 wp_die），
+	// 成功走到「取得使用者 ID」那一步就呼叫 complete_verify()，不進入任何建帳號／登入／綁定的分支。
+
+	/** 目前這次請求是不是從設定頁發起的驗證（redirect_to_*() 用來放行尚未驗證的 provider） */
+	public static function is_verify_request() {
+		return 'verify' === ( $_GET['intent'] ?? '' ); // phpcs:ignore WordPress.Security.NonceVerification -- start_state() 會驗 nonce
+	}
+
+	public static function verifying() {
+		return null !== self::$verifying;
+	}
+
+	public static function fail( $message ) {
+		if ( self::verifying() ) {
+			WCLON_Verify::record_failure( self::$verifying, $message );
+			wp_safe_redirect( WCLON_Verify::settings_url( self::$verifying ) );
+			exit;
+		}
+		wp_die( esc_html( $message ) );
+	}
+
+	public static function complete_verify( array $details = array() ) {
+		WCLON_Verify::record_success( self::$verifying, $details );
+		wp_safe_redirect( WCLON_Verify::settings_url( self::$verifying ) );
+		exit;
+	}
+
+	/**
+	 * provider 沒給 code 就導回來（使用者在授權頁按取消、或 provider 回報錯誤）時呼叫：這次如果是
+	 * 驗證流程，就記下原因導回設定頁；不是的話直接 return，讓呼叫端照原本的方式處理。
+	 */
+	public static function fail_if_verifying( $transient_prefix, $state, $provider_label, $message ) {
+		$data = '' !== $state ? get_transient( $transient_prefix . $state ) : false;
+		if ( ! is_array( $data ) || 'verify' !== ( $data['intent'] ?? '' ) ) {
+			return;
+		}
+		self::finish_state( $transient_prefix, $state, $provider_label );
+		self::fail( $message );
 	}
 
 	/**

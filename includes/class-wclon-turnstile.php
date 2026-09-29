@@ -142,9 +142,12 @@ class WCLON_Turnstile {
 		return (bool) self::get( 'protect_forms', self::get( 'protect_elementor_form', 1 ) );
 	}
 
-	/** 總開關開啟且兩把金鑰都填了才算真的啟用 */
+	/**
+	 * 總開關開啟、兩把金鑰都填了、而且金鑰已通過驗證（v1.43.0 起，見 WCLON_Verify）才算真的啟用。
+	 * 沒驗證就上線的話，Secret Key 打錯會讓所有登入都失敗、連管理員也進不去。
+	 */
 	public static function is_active() {
-		return (bool) self::get( 'enabled' ) && self::get( 'site_key' ) && self::get( 'secret_key' );
+		return (bool) self::get( 'enabled' ) && WCLON_Verify::ready( 'turnstile' );
 	}
 
 	public static function register_settings() {
@@ -572,7 +575,7 @@ class WCLON_Turnstile {
 						<th scope="row">啟用 Turnstile</th>
 						<td>
 							<label><input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[enabled]" value="1" <?php checked( $enabled, 1 ); ?>> 啟用人機驗證</label>
-							<p class="description">關閉、或下方兩把金鑰任一沒填時，整個功能完全不掛載（表單不會出現 widget，也不會有任何驗證），不會有「半套」把顧客擋在門外的狀況。</p>
+							<p class="description">關閉、下方兩把金鑰任一沒填、或金鑰尚未通過驗證時，整個功能完全不掛載（表單不會出現 widget，也不會有任何驗證），不會有「半套」把顧客擋在門外的狀況。</p>
 						</td>
 					</tr>
 					<tr>
@@ -586,6 +589,7 @@ class WCLON_Turnstile {
 							<p class="description">只用於後端向 Cloudflare 驗證，不會輸出到前台頁面。</p>
 						</td>
 					</tr>
+					<?php WCLON_Verify::render_status_row( 'turnstile' ); ?>
 				</table>
 			</div>
 

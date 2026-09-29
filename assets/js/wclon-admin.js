@@ -480,3 +480,81 @@
 		});
 	});
 }(jQuery));
+
+// ── 憑證驗證綁定（v1.43.0）──
+// 驗證只認「已儲存」的憑證：欄位改了還沒存就按驗證，測到的會是舊值，所以先攔下提醒。
+(function ($) {
+	function hasUnsavedFields(btn) {
+		var names = String(btn.getAttribute('data-wclon-verify-fields') || '').split(',');
+		return names.some(function (name) {
+			var field = name ? document.querySelector('[name="' + name + '"]') : null;
+			return field && field.value !== field.defaultValue;
+		});
+	}
+
+	$(document).on('click', '[data-wclon-verify-fields]', function (e) {
+		if (hasUnsavedFields(this)) {
+			e.preventDefault();
+			e.stopImmediatePropagation();
+			window.alert('憑證欄位有修改還沒儲存，請先按「儲存設定」再驗證。');
+		}
+	});
+
+	// Turnstile：用已儲存的 Site Key 渲染一個真的 widget，完成挑戰後把 token 送後端 siteverify
+	var widgetId = null;
+	$(document).on('click', '[data-wclon-turnstile-verify]', function () {
+		var btn = $(this);
+		var box = btn.closest('td').find('.wclon-turnstile-verify-box');
+		var msg = btn.closest('td').find('.wclon-turnstile-verify-msg');
+
+		function show(text, ok) {
+			msg.prop('hidden', false).css('color', ok ? '#00a32a' : '#d63638').text(text);
+		}
+
+		if (!window.turnstile) {
+			show('無法載入 Cloudflare Turnstile，請確認網路連線或瀏覽器擋廣告外掛後重新整理。', false);
+			return;
+		}
+		if (widgetId !== null) {
+			window.turnstile.remove(widgetId);
+		}
+		msg.prop('hidden', true);
+		box.prop('hidden', false).empty();
+		btn.prop('disabled', true);
+
+		widgetId = window.turnstile.render(box[0], {
+			sitekey: btn.attr('data-sitekey'),
+			callback: function (token) {
+				show('驗證中⋯', true);
+				$.post(ajaxurl, {
+					action: 'wclon_verify_turnstile',
+					nonce:  wclonAdmin.verifyNonce,
+					token:  token,
+				}).done(function (res) {
+					if (res && res.success) {
+						show(res.data.message + ' 頁面即將重新整理⋯', true);
+						window.setTimeout(function () { window.location.reload(); }, 800);
+					} else {
+						btn.prop('disabled', false);
+						show((res && res.data && res.data.message) || '驗證失敗。', false);
+					}
+				}).fail(function () {
+					btn.prop('disabled', false);
+					show('送出驗證時發生錯誤，請重新整理後再試。', false);
+				});
+			},
+			'error-callback': function (code) {
+				code = String(code || '');
+				btn.prop('disabled', false);
+				if (code.indexOf('1101') === 0) {
+					show('Site Key 無效，請到 Cloudflare 複製正確的 Site Key（錯誤代碼 ' + code + '）。', false);
+				} else if (code === '110200') {
+					show('這個網域不在 Cloudflare Turnstile 的允許清單，請到 Cloudflare 的網站設定加入「' + window.location.hostname + '」（錯誤代碼 110200）。', false);
+				} else {
+					show('Turnstile 驗證失敗（錯誤代碼 ' + (code || '未知') + '），請重新驗證。', false);
+				}
+				return true;
+			},
+		});
+	});
+}(jQuery));

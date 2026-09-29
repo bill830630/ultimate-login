@@ -205,10 +205,15 @@ class WCLON_Settings {
 		// 設定頁的互動腳本（頁籤、預覽、合併儲存、測試推播），v1.39.0 前是頁面裡的內嵌 <script>
 		wp_enqueue_script( 'wclon-admin', WCLON_PLUGIN_URL . 'assets/js/wclon-admin.js', array( 'jquery', 'wp-color-picker' ), filemtime( WCLON_PLUGIN_DIR . 'assets/js/wclon-admin.js' ), true );
 		wp_localize_script( 'wclon-admin', 'wclonAdmin', array(
-			'siteName'  => get_bloginfo( 'name' ),
-			'nonce'     => wp_create_nonce( 'wclon_admin_action' ),
-			'wcanNonce' => wp_create_nonce( 'wcan_admin_action' ),
+			'siteName'    => get_bloginfo( 'name' ),
+			'nonce'       => wp_create_nonce( 'wclon_admin_action' ),
+			'wcanNonce'   => wp_create_nonce( 'wcan_admin_action' ),
+			'verifyNonce' => wp_create_nonce( WCLON_Verify::NONCE_ACTION ),
 		) );
+		// Turnstile 驗證綁定（v1.43.0）要在設定頁渲染一個真的 widget；只在 Site Key 已儲存時載入
+		if ( WCLON_Turnstile::get( 'site_key' ) ) {
+			wp_enqueue_script( 'wclon-cf-turnstile-admin', 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit', array(), null, true ); // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.MissingVersion
+		}
 	}
 
 	public static function flush_cache() {
@@ -354,7 +359,7 @@ class WCLON_Settings {
 	}
 
 	private static function line_block_visible() {
-		if ( ! class_exists( 'WCLON_Line_Login' ) || ! self::get( 'login_channel_id' ) ) {
+		if ( ! class_exists( 'WCLON_Line_Login' ) || ! WCLON_Verify::ready( 'line' ) ) {
 			return false;
 		}
 		// 已綁定就整區隱藏。get_current_line_user_id() 除了會員 meta 也看 WC session，
@@ -363,7 +368,7 @@ class WCLON_Settings {
 	}
 
 	private static function social_block_visible() {
-		return (bool) ( self::get( 'google_client_id' ) || self::get( 'apple_client_id' ) );
+		return WCLON_Verify::ready( 'google' ) || WCLON_Verify::ready( 'apple' );
 	}
 
 	public static function default_line_bar_title() {
@@ -970,6 +975,7 @@ class WCLON_Settings {
 								<th scope="row"><label>LINE Login Channel Secret</label></th>
 								<td><input type="password" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[login_channel_secret]" value="<?php echo esc_attr( self::get( 'login_channel_secret' ) ); ?>" class="regular-text" autocomplete="new-password"></td>
 							</tr>
+							<?php WCLON_Verify::render_status_row( 'line' ); ?>
 							<tr>
 								<th scope="row">強制重新詢問同意</th>
 								<td>
@@ -1007,6 +1013,7 @@ class WCLON_Settings {
 								<th scope="row"><label>Google Client Secret</label></th>
 								<td><input type="password" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[google_client_secret]" value="<?php echo esc_attr( self::get( 'google_client_secret' ) ); ?>" class="regular-text" autocomplete="new-password"></td>
 							</tr>
+							<?php WCLON_Verify::render_status_row( 'google' ); ?>
 						</table>
 					</div>
 				</div><!-- /wclon-tab-google -->
@@ -1093,6 +1100,7 @@ class WCLON_Settings {
 									<p class="description">將 .p8 檔案內容（含 BEGIN / END 行）貼入。金鑰只能從 Apple Developer Console 下載一次，請妥善保存。</p>
 								</td>
 							</tr>
+							<?php WCLON_Verify::render_status_row( 'apple' ); ?>
 						</table>
 					</div>
 				</div><!-- /wclon-tab-apple -->

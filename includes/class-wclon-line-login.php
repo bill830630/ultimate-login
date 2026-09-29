@@ -30,8 +30,8 @@ class WCLON_Line_Login {
 			add_action( 'woocommerce_account_' . WCLON_ACCOUNT_ENDPOINT . '_endpoint', array( __CLASS__, 'echo_account_actions' ), 41 );
 		}
 
-		// LINE 登入／綁定按鈕（登入頁、WC 帳號頁）
-		if ( WCLON_Settings::get( 'login_channel_id' ) ) {
+		// LINE 登入／綁定按鈕（登入頁、WC 帳號頁）；v1.43.0 起憑證要驗證通過才顯示，見 WCLON_Verify
+		if ( WCLON_Verify::ready( 'line' ) ) {
 			add_action( WCLON_Settings::social_hook( 'wp_login' ), array( __CLASS__, 'echo_wp_login_button' ) );
 			add_filter( 'login_message', array( __CLASS__, 'render_login_page_notice' ) );
 			add_action( WCLON_Settings::social_hook( 'wc_login' ), array( __CLASS__, 'echo_wc_login_button' ) );
@@ -71,8 +71,11 @@ class WCLON_Line_Login {
 
 	private static function redirect_to_line() {
 		$channel_id = WCLON_Settings::get( 'login_channel_id' );
-		if ( ! $channel_id ) {
-			wp_die( '尚未設定 LINE Login Channel ID。' );
+		if ( ! WCLON_Verify::has_credentials( 'line' ) ) {
+			wp_die( '尚未設定 LINE Login Channel ID／Channel Secret。' );
+		}
+		if ( ! WCLON_OAuth::is_verify_request() && ! WCLON_Verify::ready( 'line' ) ) {
+			wp_die( 'LINE 登入的憑證尚未通過驗證，目前無法使用。' );
 		}
 
 		$state = WCLON_OAuth::start_state( self::STATE_TRANSIENT );
@@ -102,6 +105,12 @@ class WCLON_Line_Login {
 
 	private static function handle_callback() {
 		if ( empty( $_GET['code'] ) || empty( $_GET['state'] ) ) {
+			WCLON_OAuth::fail_if_verifying(
+				self::STATE_TRANSIENT,
+				sanitize_text_field( wp_unslash( $_GET['state'] ?? '' ) ),
+				'LINE',
+				'LINE 授權沒有完成（' . sanitize_text_field( wp_unslash( $_GET['error_description'] ?? $_GET['error'] ?? '沒有收到授權碼' ) ) . '）。在授權頁按了取消的話，重新驗證一次即可。'
+			);
 			wp_safe_redirect( home_url() );
 			exit;
 		}
@@ -124,12 +133,12 @@ class WCLON_Line_Login {
 		) );
 
 		if ( is_wp_error( $response ) ) {
-			wp_die( 'LINE 連線失敗：' . esc_html( $response->get_error_message() ) );
+			WCLON_OAuth::fail( 'LINE 連線失敗：' . $response->get_error_message() );
 		}
 
 		$body = json_decode( wp_remote_retrieve_body( $response ), true );
 		if ( empty( $body['access_token'] ) ) {
-			wp_die( 'LINE 授權失敗，請確認 Channel ID / Secret 與 Callback URL 設定是否正確。' );
+			WCLON_OAuth::fail( 'LINE 授權失敗，請確認 Channel ID / Secret 與 Callback URL 設定是否正確。' . ( ! empty( $body['error_description'] ) ? '（' . sanitize_text_field( $body['error_description'] ) . '）' : '' ) );
 		}
 
 		// 從 ID Token 取得 email（需在 LINE Developers Console 開啟 email 權限）
@@ -137,7 +146,7 @@ class WCLON_Line_Login {
 
 		// 綁定歡迎優惠券只在確認已加官方帳號好友時才發放（見 maybe_issue_bind_coupon()）；
 		// 只有啟用該功能時才需要多打一次好友狀態 API，避免每次登入都平白多一次外部請求。
-		$is_line_friend = WCLON_Settings::get( 'line_bind_coupon_enabled' )
+		$is_line_friend = WCLON_Settings::get( 'line_bind_coupon_enabled' ) && ! WCLON_OAuth::verifying()
 			? self::is_line_friend( $body['access_token'] )
 			: true;
 
@@ -148,12 +157,17 @@ class WCLON_Line_Login {
 		) );
 
 		if ( is_wp_error( $profile_res ) ) {
-			wp_die( '取得 LINE 個人資料失敗。' );
+			WCLON_OAuth::fail( '取得 LINE 個人資料失敗。' );
 		}
 
 		$profile = json_decode( wp_remote_retrieve_body( $profile_res ), true );
 		if ( empty( $profile['userId'] ) ) {
-			wp_die( '無法取得 LINE User ID。' );
+			WCLON_OAuth::fail( '無法取得 LINE User ID。' );
+		}
+
+		// 設定頁發起的憑證驗證：到此為止。順便記下有沒有拿到 email，設定頁用來提示 Email 權限是否核准
+		if ( WCLON_OAuth::verifying() ) {
+			WCLON_OAuth::complete_verify( array( 'email' => '' !== $line_email ) );
 		}
 
 		$line_user_id = sanitize_text_field( $profile['userId'] );
@@ -621,7 +635,7 @@ class WCLON_Line_Login {
 	}
 
 	public static function render_connect_button() {
-		if ( ! WCLON_Settings::get( 'login_channel_id' ) ) {
+		if ( ! WCLON_Verify::ready( 'line' ) ) {
 			return '';
 		}
 
@@ -673,7 +687,7 @@ class WCLON_Line_Login {
 	/* ---------- 精簡 chip（結帳頁 / 帳戶詳細資料頁共用）---------- */
 
 	private static function render_chip( $intent, $redirect, $label = 'LINE' ) {
-		if ( ! WCLON_Settings::get( 'login_channel_id' ) ) {
+		if ( ! WCLON_Verify::ready( 'line' ) ) {
 			return '';
 		}
 		$shape_class = esc_attr( WCLON_Settings::get_shape_class() );
@@ -701,7 +715,7 @@ class WCLON_Line_Login {
 	}
 
 	public static function render_account_row() {
-		if ( ! WCLON_Settings::get( 'login_channel_id' ) ) {
+		if ( ! WCLON_Verify::ready( 'line' ) ) {
 			return '';
 		}
 		ob_start();
@@ -731,7 +745,7 @@ class WCLON_Line_Login {
 	}
 
 	public static function render_account_actions() {
-		if ( ! WCLON_Settings::get( 'login_channel_id' ) || ! self::get_current_line_user_id() ) {
+		if ( ! WCLON_Verify::ready( 'line' ) || ! self::get_current_line_user_id() ) {
 			return '';
 		}
 		$notify_on = self::get_notify_enabled( get_current_user_id() );

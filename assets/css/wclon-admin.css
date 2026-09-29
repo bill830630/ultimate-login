@@ -652,3 +652,12 @@
     .wclon-admin-wrap { min-height: calc(100vh - 46px); }
     .wclon-admin-wrap .nav-tab { font-size: 15px; }
 }
+
+/* 憑證驗證狀態（v1.43.0） */
+.wclon-verify-status { margin: 0 0 8px; }
+.wclon-verify-status .dashicons { vertical-align: text-bottom; }
+.wclon-verify-status--verified .dashicons { color: #00a32a; }
+.wclon-verify-status--unverified,
+.wclon-verify-status--changed { color: #996800; }
+.wclon-verify-error { color: #d63638; }
+.wclon-turnstile-verify-box { margin: 8px 0; }

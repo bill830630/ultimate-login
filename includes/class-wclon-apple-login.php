@@ -23,7 +23,8 @@ class WCLON_Apple_Login {
 			add_action( 'woocommerce_account_' . WCLON_ACCOUNT_ENDPOINT . '_endpoint', array( __CLASS__, 'echo_account_row' ), 12 );
 		}
 
-		if ( WCLON_Settings::get( 'apple_client_id' ) ) {
+		// v1.43.0 起憑證要驗證通過才顯示按鈕，見 WCLON_Verify
+		if ( WCLON_Verify::ready( 'apple' ) ) {
 			add_action( WCLON_Settings::social_hook( 'wp_login' ), array( __CLASS__, 'echo_wp_login_button' ) );
 			add_action( WCLON_Settings::social_hook( 'wc_login' ), array( __CLASS__, 'echo_wc_login_button' ) );
 			add_action( WCLON_Settings::social_hook( 'wc_register' ), array( __CLASS__, 'echo_wc_register_button' ) );
@@ -52,8 +53,11 @@ class WCLON_Apple_Login {
 
 	private static function redirect_to_apple() {
 		$client_id = WCLON_Settings::get( 'apple_client_id' );
-		if ( ! $client_id ) {
-			wp_die( '尚未設定 Apple Services ID。' );
+		if ( ! WCLON_Verify::has_credentials( 'apple' ) ) {
+			wp_die( '尚未填齊 Apple 憑證（Services ID、Team ID、Key ID、私鑰）。' );
+		}
+		if ( ! WCLON_OAuth::is_verify_request() && ! WCLON_Verify::ready( 'apple' ) ) {
+			wp_die( 'Apple 登入的憑證尚未通過驗證，目前無法使用。' );
 		}
 
 		$state = WCLON_OAuth::start_state( self::STATE_TRANSIENT );
@@ -75,6 +79,12 @@ class WCLON_Apple_Login {
 		// Apple 以 POST 方式回傳，wclon_action 仍在 Query String，其餘資料在 $_POST
 		if ( ! empty( $_POST['error'] ) ) {
 			$error = sanitize_text_field( wp_unslash( $_POST['error'] ) );
+			WCLON_OAuth::fail_if_verifying(
+				self::STATE_TRANSIENT,
+				sanitize_text_field( wp_unslash( $_POST['state'] ?? '' ) ),
+				'Apple',
+				'user_cancelled_authorize' === $error ? '在 Apple 授權頁按了取消，重新驗證一次即可。' : 'Apple 授權失敗：' . $error
+			);
 			if ( 'user_cancelled_authorize' === $error ) {
 				wp_safe_redirect( home_url() );
 				exit;
@@ -95,7 +105,7 @@ class WCLON_Apple_Login {
 		$code          = sanitize_text_field( wp_unslash( $_POST['code'] ) );
 		$client_secret = self::generate_client_secret();
 		if ( ! $client_secret ) {
-			wp_die( '無法產生 Apple client secret，請確認金鑰設定是否正確。' );
+			WCLON_OAuth::fail( '無法產生 Apple client secret，請確認 Team ID、Key ID 與私鑰（含 BEGIN／END 行）是否正確。' );
 		}
 
 		$response = wp_remote_post( 'https://appleid.apple.com/auth/token', array(
@@ -110,13 +120,13 @@ class WCLON_Apple_Login {
 		) );
 
 		if ( is_wp_error( $response ) ) {
-			wp_die( 'Apple 連線失敗：' . esc_html( $response->get_error_message() ) );
+			WCLON_OAuth::fail( 'Apple 連線失敗：' . $response->get_error_message() );
 		}
 
 		$body = json_decode( wp_remote_retrieve_body( $response ), true );
 		if ( empty( $body['id_token'] ) ) {
 			$err = isset( $body['error_description'] ) ? $body['error_description'] : ( isset( $body['error'] ) ? $body['error'] : '未知錯誤' );
-			wp_die( 'Apple 授權失敗：' . esc_html( $err ) );
+			WCLON_OAuth::fail( 'Apple 授權失敗：' . $err );
 		}
 
 		// 從 id_token 解析 Apple User ID 與 email（不驗簽，已透過伺服器端 token 交換取得）
@@ -127,7 +137,12 @@ class WCLON_Apple_Login {
 		$apple_email_verified = isset( $claims['email_verified'] ) && filter_var( $claims['email_verified'], FILTER_VALIDATE_BOOLEAN );
 
 		if ( ! $apple_id ) {
-			wp_die( '無法從 Apple id_token 取得使用者 ID。' );
+			WCLON_OAuth::fail( '無法從 Apple id_token 取得使用者 ID。' );
+		}
+
+		// 設定頁發起的憑證驗證：到此為止
+		if ( WCLON_OAuth::verifying() ) {
+			WCLON_OAuth::complete_verify();
 		}
 
 		// 取得顯示名稱（僅首次 Apple 授權才附帶 user JSON，之後 Apple 不再傳送）
@@ -363,7 +378,7 @@ class WCLON_Apple_Login {
 	}
 
 	public static function render_connect_button() {
-		if ( ! WCLON_Settings::get( 'apple_client_id' ) ) {
+		if ( ! WCLON_Verify::ready( 'apple' ) ) {
 			return '';
 		}
 
@@ -453,7 +468,7 @@ class WCLON_Apple_Login {
 	/* ---------- 精簡 chip（結帳頁 / 帳戶詳細資料頁共用）---------- */
 
 	private static function render_chip( $intent, $redirect, $label = 'Apple' ) {
-		if ( ! WCLON_Settings::get( 'apple_client_id' ) ) {
+		if ( ! WCLON_Verify::ready( 'apple' ) ) {
 			return '';
 		}
 		$shape_class = esc_attr( WCLON_Settings::get_shape_class() );
@@ -481,7 +496,7 @@ class WCLON_Apple_Login {
 	}
 
 	public static function render_account_row() {
-		if ( ! WCLON_Settings::get( 'apple_client_id' ) ) {
+		if ( ! WCLON_Verify::ready( 'apple' ) ) {
 			return '';
 		}
 		ob_start();

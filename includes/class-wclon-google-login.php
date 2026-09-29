@@ -23,7 +23,8 @@ class WCLON_Google_Login {
 			add_action( 'woocommerce_account_' . WCLON_ACCOUNT_ENDPOINT . '_endpoint', array( __CLASS__, 'echo_account_row' ), 11 );
 		}
 
-		if ( WCLON_Settings::get( 'google_client_id' ) ) {
+		// v1.43.0 起憑證要驗證通過才顯示按鈕，見 WCLON_Verify
+		if ( WCLON_Verify::ready( 'google' ) ) {
 			add_action( WCLON_Settings::social_hook( 'wp_login' ), array( __CLASS__, 'echo_wp_login_button' ) );
 			add_action( WCLON_Settings::social_hook( 'wc_login' ), array( __CLASS__, 'echo_wc_login_button' ) );
 			add_action( WCLON_Settings::social_hook( 'wc_register' ), array( __CLASS__, 'echo_wc_register_button' ) );
@@ -52,8 +53,11 @@ class WCLON_Google_Login {
 
 	private static function redirect_to_google() {
 		$client_id = WCLON_Settings::get( 'google_client_id' );
-		if ( ! $client_id ) {
-			wp_die( '尚未設定 Google Client ID。' );
+		if ( ! WCLON_Verify::has_credentials( 'google' ) ) {
+			wp_die( '尚未設定 Google Client ID／Client Secret。' );
+		}
+		if ( ! WCLON_OAuth::is_verify_request() && ! WCLON_Verify::ready( 'google' ) ) {
+			wp_die( 'Google 登入的憑證尚未通過驗證，目前無法使用。' );
 		}
 
 		$state = WCLON_OAuth::start_state( self::STATE_TRANSIENT );
@@ -73,6 +77,12 @@ class WCLON_Google_Login {
 
 	private static function handle_callback() {
 		if ( empty( $_GET['code'] ) || empty( $_GET['state'] ) ) {
+			WCLON_OAuth::fail_if_verifying(
+				self::STATE_TRANSIENT,
+				sanitize_text_field( wp_unslash( $_GET['state'] ?? '' ) ),
+				'Google',
+				'Google 授權沒有完成（' . sanitize_text_field( wp_unslash( $_GET['error'] ?? '沒有收到授權碼' ) ) . '）。在授權頁按了取消的話，重新驗證一次即可。'
+			);
 			wp_safe_redirect( home_url() );
 			exit;
 		}
@@ -95,12 +105,12 @@ class WCLON_Google_Login {
 		) );
 
 		if ( is_wp_error( $response ) ) {
-			wp_die( 'Google 連線失敗：' . esc_html( $response->get_error_message() ) );
+			WCLON_OAuth::fail( 'Google 連線失敗：' . $response->get_error_message() );
 		}
 
 		$body = json_decode( wp_remote_retrieve_body( $response ), true );
 		if ( empty( $body['access_token'] ) ) {
-			wp_die( 'Google 授權失敗，請確認 Client ID / Secret 與 Callback URI 設定是否正確。' );
+			WCLON_OAuth::fail( 'Google 授權失敗，請確認 Client ID / Secret 與 Callback URI 設定是否正確。' . ( ! empty( $body['error'] ) ? '（' . sanitize_text_field( $body['error'] ) . '）' : '' ) );
 		}
 
 		// 取得 Google 使用者資料
@@ -110,12 +120,17 @@ class WCLON_Google_Login {
 		) );
 
 		if ( is_wp_error( $userinfo_res ) ) {
-			wp_die( '取得 Google 使用者資料失敗。' );
+			WCLON_OAuth::fail( '取得 Google 使用者資料失敗。' );
 		}
 
 		$userinfo = json_decode( wp_remote_retrieve_body( $userinfo_res ), true );
 		if ( empty( $userinfo['sub'] ) ) {
-			wp_die( '無法取得 Google 使用者 ID。' );
+			WCLON_OAuth::fail( '無法取得 Google 使用者 ID。' );
+		}
+
+		// 設定頁發起的憑證驗證：走到這裡代表 Client ID／Secret 與 Callback URI 都正確，到此為止
+		if ( WCLON_OAuth::verifying() ) {
+			WCLON_OAuth::complete_verify();
 		}
 
 		$google_id             = sanitize_text_field( $userinfo['sub'] );
@@ -236,7 +251,7 @@ class WCLON_Google_Login {
 	}
 
 	public static function render_connect_button() {
-		if ( ! WCLON_Settings::get( 'google_client_id' ) ) {
+		if ( ! WCLON_Verify::ready( 'google' ) ) {
 			return '';
 		}
 
@@ -325,7 +340,7 @@ class WCLON_Google_Login {
 	/* ---------- 精簡 chip（結帳頁 / 帳戶詳細資料頁共用）---------- */
 
 	private static function render_chip( $intent, $redirect, $label = 'Google' ) {
-		if ( ! WCLON_Settings::get( 'google_client_id' ) ) {
+		if ( ! WCLON_Verify::ready( 'google' ) ) {
 			return '';
 		}
 		$shape_class = esc_attr( WCLON_Settings::get_shape_class() );
@@ -353,7 +368,7 @@ class WCLON_Google_Login {
 	}
 
 	public static function render_account_row() {
-		if ( ! WCLON_Settings::get( 'google_client_id' ) ) {
+		if ( ! WCLON_Verify::ready( 'google' ) ) {
 			return '';
 		}
 		ob_start();
