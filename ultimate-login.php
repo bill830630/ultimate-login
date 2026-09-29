@@ -3,7 +3,7 @@
  * Plugin Name: Ultimate Login
  * Plugin URI:  https://example.com
  * Description: 讓使用者透過 LINE、Google、Apple 登入綁定帳號，並可推播網站表單到管理員/員工共用的 LINE 群組。安裝 WooCommerce 時另外提供訂單狀態推播給顧客、新訂單群組通知、綁定歡迎優惠券與結帳頁綁定列。
- * Version:     1.43.0
+ * Version:     1.43.1
  * Author:      NiBill
  * Text Domain: ultimate-login
  * Requires PHP: 8.0
@@ -44,7 +44,7 @@ if ( defined( 'WCLON_VERSION' ) ) {
 	return;
 }
 
-define( 'WCLON_VERSION', '1.43.0' );
+define( 'WCLON_VERSION', '1.43.1' );
 define( 'WCLON_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WCLON_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 // 會員中心「帳號綁定」獨立頁面的 WC Account endpoint slug

@@ -30,9 +30,32 @@ class WCLON_System_Email_Settings {
 		add_action( 'admin_init', array( __CLASS__, 'register_settings' ) );
 		add_action( 'update_option_' . self::OPTION_KEY, array( __CLASS__, 'flush_cache' ) );
 
+		// v1.43.1 起停用的信件在「組信之前」就擋掉，完全不進 wp_mail()。原本的做法是把收件人清空、
+		// 讓 PHPMailer 在準備階段失敗：雖然不會連 SMTP、不佔寄信額度，但會觸發 wp_mail_failed，
+		// WP Mail SMTP／FluentSMTP 之類的外掛會記一筆失敗紀錄，開了失敗警示的話還會每次寄一封警示信。
+		add_filter( 'wp_send_new_user_notification_to_admin', array( __CLASS__, 'maybe_skip_new_user_admin_email' ) );
+		if ( self::get( 'disable_password_change_admin_email' ) ) {
+			// 核心重設密碼流程（wp-login.php）掛在 after_password_reset；WooCommerce 我的帳號重設密碼
+			// 會暫時拿掉核心這個 hook、自己直接呼叫 wp_password_change_notification()，由它自己的
+			// filter 控制。這裡先拿掉核心 hook，WooCommerce 用 has_action() 判斷要不要掛回，也就不會掛回。
+			remove_action( 'after_password_reset', 'wp_password_change_notification' );
+			add_filter( 'woocommerce_disable_password_change_notification', '__return_true' );
+		}
+
+		// 後備：其他外掛直接呼叫 wp_new_user_notification()／wp_password_change_notification() 時，
+		// 上面擋不到的情況（例如 WordPress 6.1 以前沒有 wp_send_new_user_notification_to_admin）
+		// 仍用清空收件人的方式不寄出。
 		add_filter( 'wp_new_user_notification_email_admin', array( __CLASS__, 'maybe_disable_new_user_admin_email' ) );
 		add_filter( 'wp_password_change_notification_email', array( __CLASS__, 'maybe_disable_password_change_admin_email' ) );
 		add_filter( 'auto_plugin_update_send_email', array( __CLASS__, 'maybe_disable_plugin_update_email' ), 10, 3 );
+	}
+
+	/**
+	 * WordPress 6.1+ 的 wp_send_new_user_notification_to_admin：回傳 false 時 wp_new_user_notification()
+	 * 整段跳過管理員那封（連信件內容都不組），寄給會員本人的那封不受影響。
+	 */
+	public static function maybe_skip_new_user_admin_email( $send ) {
+		return self::get( 'disable_new_user_admin_email' ) ? false : $send;
 	}
 
 	/**
@@ -83,7 +106,7 @@ class WCLON_System_Email_Settings {
 	/**
 	 * WordPress 核心「新使用者註冊」通知信有兩封（分寄會員與管理員，各自獨立的 filter），
 	 * 這裡只關管理員那一封。開關關閉（預設）時原樣放行 $email 陣列，不影響會員收到的那封。
-	 * 停用手法：把 'to' 設成空字串——wp_mail() 收到空收件人會直接失敗、不寄出郵件
+	 * v1.43.1 起這只是後備（主要由 maybe_skip_new_user_admin_email() 擋掉）。停用手法：把 'to' 設成空字串——wp_mail() 收到空收件人會直接失敗、不寄出郵件
 	 * （會觸發 wp_mail_failed action，但沒有實際寄送行為），比整段跳過 apply_filters
 	 * 更單純，也不需要碰 wp_new_user_notification() 內部其餘邏輯（例如寫入 activation key）。
 	 */
