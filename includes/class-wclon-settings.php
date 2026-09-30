@@ -806,6 +806,7 @@ class WCLON_Settings {
 			<div class="wclon-admin-header">
 				<h1>終極登入</h1>
 			</div>
+			<hr class="wp-header-end">
 
 			<nav class="nav-tab-wrapper" aria-label="終極登入功能分類">
 				<?php $first_group = array_key_first( $tab_groups ); foreach ( $tab_groups as $group_id => $group ) : $default_tab = array_key_first( $group['tabs'] ); ?>
