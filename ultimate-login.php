@@ -3,7 +3,7 @@
  * Plugin Name: Ultimate Login
  * Plugin URI:  https://example.com
  * Description: 讓使用者透過 LINE、Google、Apple 登入綁定帳號，並可推播網站表單到管理員/員工共用的 LINE 群組。安裝 WooCommerce 時另外提供訂單狀態推播給顧客、新訂單群組通知、綁定歡迎優惠券與結帳頁綁定列。
- * Version:     1.43.4
+ * Version:     1.44.0
  * Author:      NiBill
  * Text Domain: ultimate-login
  * Requires PHP: 8.0
@@ -44,7 +44,7 @@ if ( defined( 'WCLON_VERSION' ) ) {
 	return;
 }
 
-define( 'WCLON_VERSION', '1.43.4' );
+define( 'WCLON_VERSION', '1.44.0' );
 define( 'WCLON_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WCLON_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 // 會員中心「帳號綁定」獨立頁面的 WC Account endpoint slug
@@ -70,6 +70,7 @@ require_once WCLON_PLUGIN_DIR . 'includes/class-wcan-notifier.php';
 require_once WCLON_PLUGIN_DIR . 'includes/class-wclon-system-email-settings.php';
 // Cloudflare Turnstile 人機驗證（v1.24.0 新增，保護登入／註冊／忘記密碼三種表單）
 require_once WCLON_PLUGIN_DIR . 'includes/class-wclon-turnstile.php';
+require_once WCLON_PLUGIN_DIR . 'includes/class-wclon-line-float.php';
 require_once WCLON_PLUGIN_DIR . 'includes/class-wclon-updater.php';
 
 add_action( 'plugins_loaded', function () {
@@ -116,6 +117,7 @@ add_action( 'plugins_loaded', function () {
 		WCLON_System_Email_Settings::init();
 	}
 	WCLON_Turnstile::init();
+	WCLON_Line_Float::init(); // 懸浮 LINE 聊天按鈕（v1.44.0，不受模組開關管轄）
 
 	$wclon_mod_social = WCLON_Settings::module_enabled( 'social_login' );
 	$wclon_mod_notify = WCLON_Settings::module_enabled( 'order_notify' );

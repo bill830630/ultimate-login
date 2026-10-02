@@ -621,6 +621,10 @@ class WCLON_Settings {
 		$clean['statuses']             = isset( $input['statuses'] ) && is_array( $input['statuses'] )
 			? array_map( 'sanitize_text_field', $input['statuses'] )
 			: array();
+		// 懸浮 LINE 聊天按鈕（v1.44.0）：網址不合法就存空字串，前台因此不會輸出按鈕
+		$clean['line_float_enabled'] = ! empty( $input['line_float_enabled'] ) ? 1 : 0;
+		$clean['line_float_url']     = WCLON_Line_Float::normalize_url( $input['line_float_url'] ?? '' );
+		$clean['line_float_position'] = 'left' === ( $input['line_float_position'] ?? '' ) ? 'left' : 'right';
 		// 社交按鈕顯示位置（全域，套用至所有登入平台）
 		$clean['show_on_checkout']     = ! empty( $input['show_on_checkout'] ) ? 1 : 0;
 		$clean['show_on_cart']         = ! empty( $input['show_on_cart'] ) ? 1 : 0;
@@ -846,6 +850,33 @@ class WCLON_Settings {
 
 				<!-- ══ 一般設定 Tab ══ -->
 				<div id="wclon-tab-general" class="wclon-tab-pane" data-tab="general" style="display:none;">
+					<div class="wclon-card">
+						<h2 class="wclon-card__title">懸浮 LINE 聊天按鈕</h2>
+						<p class="wclon-card__desc">在網站每個頁面的角落顯示一顆 LINE 圓形按鈕。顧客未登入時點擊會用 LINE 登入（登入後回到原頁面）；已登入則開啟官方帳號聊天。</p>
+						<table class="form-table">
+							<tr>
+								<th scope="row">啟用</th>
+								<td><label><input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[line_float_enabled]" value="1" <?php checked( self::get( 'line_float_enabled', 0 ), 1 ); ?>> 在前台顯示懸浮 LINE 按鈕</label></td>
+							</tr>
+							<tr>
+								<th scope="row"><label for="wclon_line_float_position">位置</label></th>
+								<td>
+									<select id="wclon_line_float_position" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[line_float_position]">
+										<option value="right" <?php selected( self::get( 'line_float_position', 'right' ), 'right' ); ?>>右下角（預設）</option>
+										<option value="left" <?php selected( self::get( 'line_float_position', 'right' ), 'left' ); ?>>左下角</option>
+									</select>
+								</td>
+							</tr>
+							<tr>
+								<th scope="row"><label for="wclon_line_float_url">官方帳號連結</label></th>
+								<td>
+									<input type="text" id="wclon_line_float_url" class="large-text" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[line_float_url]" value="<?php echo esc_attr( self::get( 'line_float_url', '' ) ); ?>" placeholder="@123abcde 或 https://lin.ee/xxxxxxx">
+									<p class="description">填官方帳號的 Basic ID（例如 <code>@123abcde</code>）或 LINE 提供的加好友連結（<code>line.me</code>／<code>lin.ee</code>）。用於已登入顧客的聊天；格式不符時不會儲存。未登入的顧客點擊走 LINE 登入，需先在「LINE」頁籤填好並驗證 Channel；沒驗證時未登入者也會開啟聊天。按鈕配色固定為 LINE 官方綠。</p>
+								</td>
+							</tr>
+						</table>
+					</div>
+
 					<div class="wclon-card<?php echo esc_attr( $off_wc ); ?>">
 						<h2 class="wclon-card__title">社交按鈕顯示位置</h2>
 						<p class="wclon-card__desc">套用至所有已啟用的登入平台（LINE / Google / Apple）。</p>

@@ -493,3 +493,34 @@
 
 /* Cloudflare Turnstile 容器樣式 v1.41.0 起改由 WCLON_Turnstile::enqueue_assets() 以內嵌樣式輸出，
    社交登入模組關閉（本檔不載入）時仍然有效。 */
+
+/* ── 懸浮 LINE 聊天按鈕（左／右下角固定，LINE 官方綠）── */
+.wclon-line-float {
+    position: fixed;
+    bottom: 20px;
+    z-index: 99990;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: #06c755;
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+    text-decoration: none;
+    transition: transform 0.15s ease, background 0.15s ease;
+}
+.wclon-line-float:hover,
+.wclon-line-float:focus-visible {
+    background: #05b34c;
+    color: #fff;
+    transform: scale(1.06);
+}
+.wclon-line-float--right { right: 20px; }
+.wclon-line-float--left { left: 20px; }
+@media (max-width: 600px) {
+    .wclon-line-float { bottom: 14px; }
+    .wclon-line-float--right { right: 14px; }
+    .wclon-line-float--left { left: 14px; }
+}
