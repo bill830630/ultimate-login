@@ -649,6 +649,8 @@ class WCLON_Line_Login {
 		$current_url = sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ?? '/' ) );
 		$current     = ( is_ssl() ? 'https' : 'http' ) . '://' . sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ?? '' ) ) . $current_url;
 
+		$notify_avail = WCLON_Settings::line_notify_available();
+
 		ob_start();
 		?>
 		<div class="wclon-connect-box">
@@ -673,11 +675,13 @@ class WCLON_Line_Login {
 				<?php endif; ?>
 			<?php else : ?>
 				<?php // intent=link 只能用在這裡（會員中心，使用者必定已登入）；結帳／購物車頁的入口一律用 intent=checkout，見 CLAUDE.md 踩坑 ?>
-				<a class="wclon-connect-btn<?php echo esc_attr( WCLON_Settings::get_btn_classes() ); ?>" href="<?php echo esc_url( home_url( '/?wclon_action=login&intent=link&redirect=' . rawurlencode( $current ) ) ); ?>" aria-label="用 LINE 綁定，接收訂單通知">
+				<a class="wclon-connect-btn<?php echo esc_attr( WCLON_Settings::get_btn_classes() ); ?>" href="<?php echo esc_url( home_url( '/?wclon_action=login&intent=link&redirect=' . rawurlencode( $current ) ) ); ?>" aria-label="<?php echo esc_attr( $notify_avail ? '用 LINE 綁定，接收訂單通知' : '用 LINE 綁定帳號' ); ?>">
 					<?php echo self::line_icon(); // phpcs:ignore WordPress.Security.EscapeOutput ?>
-					<span class="wclon-btn-label">用 LINE 綁定，接收訂單通知</span>
+					<span class="wclon-btn-label"><?php echo esc_html( $notify_avail ? '用 LINE 綁定，接收訂單通知' : '用 LINE 綁定帳號' ); ?></span>
 				</a>
-				<div class="wclon-connect-hint">綁定後即可透過 LINE 官方帳號收到訂單狀態通知。</div>
+				<?php if ( $notify_avail ) : ?>
+					<div class="wclon-connect-hint">綁定後即可透過 LINE 官方帳號收到訂單狀態通知。</div>
+				<?php endif; ?>
 			<?php endif; ?>
 		</div>
 		<?php

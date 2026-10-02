@@ -375,6 +375,16 @@ class WCLON_Settings {
 		return '訂單狀態，用 LINE 即時通知你';
 	}
 
+	/**
+	 * LINE 訊息通知是否真的可用：訂單通知模組開著、顧客通知開著、Channel Access Token 已填。
+	 * 只串了 LINE 登入、沒串訊息通知時，LINE 區塊不能承諾「即時通知」。
+	 */
+	public static function line_notify_available() {
+		return self::module_enabled( 'order_notify' )
+			&& self::get( 'notify_customer_enabled', 1 )
+			&& '' !== trim( (string) self::get( 'channel_access_token' ) );
+	}
+
 	public static function default_social_bar_title() {
 		return '快速登入或註冊';
 	}
@@ -395,8 +405,13 @@ class WCLON_Settings {
 			return ''; // 平台端自己判斷不輸出時（例如憑證被清空），不要留一個只有標題的空盒子
 		}
 
+		// 沒串訊息通知時改用純登入文案，不承諾通知功能
+		$title = self::line_notify_available()
+			? self::get( 'line_bar_title', self::default_line_bar_title() )
+			: self::default_social_bar_title();
+
 		return '<div class="wclon-checkout-bar wclon-checkout-bar--line">'
-			. '<span class="wclon-checkout-bar__label">' . esc_html( self::get( 'line_bar_title', self::default_line_bar_title() ) ) . '</span>'
+			. '<span class="wclon-checkout-bar__label">' . esc_html( $title ) . '</span>'
 			. '<span class="wclon-checkout-bar__chips">' . $chip . '</span>'
 			. '</div>';
 	}
