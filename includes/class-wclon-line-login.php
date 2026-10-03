@@ -178,6 +178,14 @@ class WCLON_Line_Login {
 		if ( 'login' === $intent || 'register' === $intent || 'checkout' === $intent ) {
 			list( $wp_user_id, $matched_by_email ) = self::resolve_login_user( $line_user_id, $line_email );
 
+			// 已登入時不可切換成另一個帳號：比對到的會員不是目前帳號就擋下並提示，
+			// 否則會出現「用 A 登入後綁定 B 的社交帳號，卻直接變成 B」的情況
+			if ( $wp_user_id && is_user_logged_in() && (int) $wp_user_id !== get_current_user_id() ) {
+				WCLON_WC::error_notice( ! $matched_by_email ? '此帳號已綁定其他會員，請先於該會員帳號解除綁定後再試一次。' : '此帳號的 Email 與您目前帳號的 Email 不符，無法綁定。' );
+				wp_safe_redirect( $redirect );
+				exit;
+			}
+
 			if ( $wp_user_id ) {
 				if ( $matched_by_email ) {
 					// 這個帳號原本沒綁過 LINE（是靠 email 對上的）→ 等同「第一次綁定」：補寫 LINE ID、
