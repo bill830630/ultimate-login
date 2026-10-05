@@ -23,7 +23,9 @@
 (function () {
 	'use strict';
 
+	var cfg = window.wclonTurnstile || {};
 	var apiReady = false;
+	var apiLoading = false;
 	var renderTimer = null;
 	var POLL_INTERVAL_MS = 150;
 	var MAX_POLL_ATTEMPTS = 100; // 150ms * 100 = 15 秒逾時上限
@@ -43,7 +45,30 @@
 		};
 	}
 
+	// Cloudflare api.js 改成按需載入（v1.44.2）：頁面上沒有任何 widget 容器時完全不對 Cloudflare 發請求。
+	// 載入完成後 api.js 會呼叫 wclonTurnstileOnload，由它重新掃描並渲染等待中的容器。
+	function loadApi() {
+		if (apiReady || apiLoading || !cfg.apiUrl) {
+			return;
+		}
+		apiLoading = true;
+		var s = document.createElement('script');
+		s.src = cfg.apiUrl;
+		s.async = true;
+		s.defer = true;
+		s.onerror = function () {
+			apiLoading = false;
+		};
+		document.head.appendChild(s);
+	}
+
 	function renderNow(el) {
+		if (!apiReady || typeof window.turnstile === 'undefined') {
+			// 容器已可見但 api.js 還沒到：放回待渲染狀態並觸發載入
+			el.removeAttribute('data-wclon-pending');
+			loadApi();
+			return;
+		}
 		// 先標記再渲染：MutationObserver 會被 turnstile.render() 自己插入的 iframe 觸發，
 		// 沒先標記的話同一個容器會在下一輪又被抓出來渲染一次。
 		el.setAttribute('data-wclon-rendered', '1');
@@ -64,10 +89,6 @@
 	}
 
 	function renderAll() {
-		if (!apiReady || typeof window.turnstile === 'undefined') {
-			return;
-		}
-
 		var nodes = document.querySelectorAll(
 			'.wclon-turnstile[data-sitekey]:not([data-wclon-rendered]):not([data-wclon-pending])'
 		);
@@ -153,7 +174,6 @@
 
 	// ── 網站表單自動加入 widget（v1.41.0） ──
 	// 各外掛的表單可能由 AJAX、彈窗或頁面產生器晚點才放進 DOM，所以跟渲染一樣由 MutationObserver 驅動。
-	var cfg = window.wclonTurnstile || {};
 	var FORM_TYPES = [
 		{
 			form: 'form.elementor-form',

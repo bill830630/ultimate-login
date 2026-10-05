@@ -24,7 +24,7 @@ class WCLON_Turnstile {
 
 	const VERIFY_ENDPOINT = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
 
-	const API_HANDLE = 'wclon-turnstile-api';
+	const API_URL = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=wclonTurnstileOnload';
 
 	/**
 	 * v1.28.0～v1.40.x 的 Elementor 自訂欄位型別 key。v1.41.0 起改成所有表單自動加入，
@@ -56,7 +56,6 @@ class WCLON_Turnstile {
 
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
 		add_action( 'login_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
-		add_filter( 'script_loader_tag', array( __CLASS__, 'script_loader_tag' ), 10, 2 );
 
 		// ── widget 輸出位置 ──
 		// 每一張表單只會命中下列其中一個 hook，不需要「本表單已渲染過」之類的旗標：
@@ -189,13 +188,12 @@ class WCLON_Turnstile {
 	// ─── 前台 widget ────────────────────────────────────────────────────────
 
 	/**
-	 * Cloudflare 的 api.js 與本外掛的渲染腳本一律無條件載入（只要 Turnstile 已啟用）。
+	 * 只輸出本外掛的小型渲染腳本與樣式；Cloudflare 的 api.js（外部網域、較大）不再由 PHP 載入，
+	 * 改由 wclon-turnstile.js 在「頁面上真的出現 widget 容器且已可見」時才動態插入。
 	 *
-	 * 不做「只在登入/註冊頁載入」的判斷，是因為 Blocksy 的 header 帳號彈出視窗會在**任何**
-	 * 前台頁面的頁尾輸出登入/註冊/忘記密碼三張表單，無法事先判斷哪些頁面會有 widget；而彈窗
-	 * 的 markup 是在 wp_footer 輸出的，等到渲染時才 wp_enqueue_script() 有可能已經來不及
-	 * （wp_print_footer_scripts 已經跑過），腳本會整個不出現、widget 永遠不會被渲染。
-	 * api.js 很小且帶 defer，成本可以接受。
+	 * 這支腳本仍然無條件載入，因為 Blocksy 的 header 帳號彈窗會在任何前台頁面出現登入/註冊表單，
+	 * 無法事先判斷；但彈窗表單是點擊後才從 <template> 複製進 DOM 的，所以一般瀏覽頁不會有任何
+	 * 容器，也就不會對 challenges.cloudflare.com 發出任何請求。
 	 */
 	public static function enqueue_assets() {
 		wp_enqueue_script(
@@ -203,7 +201,7 @@ class WCLON_Turnstile {
 			WCLON_PLUGIN_URL . 'assets/js/wclon-turnstile.js',
 			array(),
 			WCLON_VERSION,
-			false
+			true
 		);
 		// 容器樣式獨立輸出，不依賴只在社交登入模組啟用時才載入的 wclon-frontend.css。
 		// clear:both 避免 WooCommerce 我的帳號左右分欄版型的浮動元素；flexible 時容器也要滿版；
@@ -219,29 +217,10 @@ class WCLON_Turnstile {
 			'theme'      => self::get( 'theme', 'auto' ),
 			'size'       => self::get( 'widget_size', 'normal' ),
 			'appearance' => self::get( 'appearance', 'always' ),
+			// render=explicit：不讓 api.js 自己掃 DOM，全部交給 wclon-turnstile.js 用 turnstile.render()
+			// 處理——Blocksy 彈窗送出失敗時整段表單 HTML 會被 AJAX 換掉，隱式渲染換進來的新表單不會有 widget。
+			'apiUrl'     => self::API_URL,
 		) );
-		// render=explicit：不讓 api.js 自己掃 DOM，全部交給 wclon-turnstile.js 用 turnstile.render()
-		// 處理——Blocksy 彈窗送出失敗時整段表單 HTML 會被 AJAX 換掉，隱式渲染只在載入當下掃一次，
-		// 換進來的新表單不會有 widget。
-		wp_enqueue_script(
-			self::API_HANDLE,
-			'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=wclonTurnstileOnload',
-			array( 'wclon-turnstile' ),
-			null,
-			false
-		);
-	}
-
-	/**
-	 * api.js 必須帶 defer：它是外部網域的腳本，若用預設的同步載入會擋住頁面解析；
-	 * 而 defer 的執行時機保證在 wclon-turnstile.js（一般同步腳本）之後，
-	 * onload callback `wclonTurnstileOnload` 一定已經定義好。
-	 */
-	public static function script_loader_tag( $tag, $handle ) {
-		if ( self::API_HANDLE === $handle && ! str_contains( $tag, ' defer' ) ) {
-			$tag = str_replace( '<script ', '<script defer ', $tag );
-		}
-		return $tag;
 	}
 
 	public static function render_login_widget() {
