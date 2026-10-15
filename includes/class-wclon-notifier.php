@@ -499,7 +499,7 @@ class WCLON_Notifier {
 	public static function send_bind_coupon_notice( $line_user_id, $coupon ) {
 		$site_name = get_bloginfo( 'name' );
 		$code      = $coupon->get_code();
-		$type      = $coupon->get_discount_type();
+		$type      = $coupon->get_free_shipping() ? 'free_shipping' : $coupon->get_discount_type();
 		$amount    = (float) $coupon->get_amount();
 		$expires   = $coupon->get_date_expires();
 		$color     = WCLON_Settings::get( 'header_color', '#00C300' );

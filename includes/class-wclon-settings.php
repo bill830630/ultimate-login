@@ -452,10 +452,12 @@ class WCLON_Settings {
 	}
 
 	/**
-	 * 折扣數值的顯示文字：百分比類型顯示「N%」，固定金額類型用 wc_price() 格式化。
-	 * LINE 綁定歡迎優惠券、購物車棄單提醒優惠券共用同一套格式，避免各自實作出現落差。
+	 * 折扣數值的顯示文字：百分比類型顯示「N%」，固定金額類型用 wc_price() 格式化，免運券顯示「免運費」。
 	 */
 	public static function format_coupon_amount( $type, $amount ) {
+		if ( 'free_shipping' === $type ) {
+			return '免運費';
+		}
 		$amount = (float) $amount;
 		return 'percent' === $type
 			? rtrim( rtrim( sprintf( '%.2f', $amount ), '0' ), '.' ) . '%'
@@ -473,7 +475,7 @@ class WCLON_Settings {
 	 *
 	 * @param int    $user_id
 	 * @param string $code_prefix  優惠券代碼前綴（例如 'LINE'、'CART'），會接上隨機字串組成完整代碼
-	 * @param string $type         'fixed_cart' | 'percent'
+	 * @param string $type         'fixed_cart' | 'percent' | 'free_shipping'（v1.46.0，$amount 忽略）
 	 * @param float  $amount
 	 * @param int    $expiry_days  幾天後過期，0 = 不過期
 	 * @param float  $min_spend    最低消費金額，0 = 無限制
@@ -493,8 +495,9 @@ class WCLON_Settings {
 		$visual_desc,
 		$internal_desc = ''
 	) {
-		$amount = (float) $amount;
-		if ( $amount <= 0 || ! WCLON_WC::active() ) {
+		$free_shipping = 'free_shipping' === $type;
+		$amount        = $free_shipping ? 0 : (float) $amount;
+		if ( ( ! $free_shipping && $amount <= 0 ) || ! WCLON_WC::active() ) {
 			return null;
 		}
 		$user = get_userdata( $user_id );
@@ -513,7 +516,10 @@ class WCLON_Settings {
 		$coupon->set_code( $code );
 		$coupon->set_discount_type( $type );
 		$coupon->set_amount( $amount );
-		$coupon->set_individual_use( true );
+		// 免運券沿用終極電商生日／升等禮的做法（twshop_create_gift_coupon()）：金額 0 + WC 原生
+		// 「允許免運費」旗標；不扣商品金額，所以不獨占，可以跟其他折扣券一起用。
+		$coupon->set_free_shipping( $free_shipping );
+		$coupon->set_individual_use( ! $free_shipping );
 		$coupon->set_usage_limit( 1 );
 		$coupon->set_usage_limit_per_user( 1 );
 		if ( $internal_desc ) {
@@ -608,7 +614,7 @@ class WCLON_Settings {
 
 		// LINE 綁定歡迎優惠券
 		$clean['line_bind_coupon_enabled'] = ! empty( $input['line_bind_coupon_enabled'] ) ? 1 : 0;
-		$allowed_coupon_types              = array( 'fixed_cart', 'percent' );
+		$allowed_coupon_types              = array( 'fixed_cart', 'percent', 'free_shipping' );
 		$clean['line_bind_coupon_type']    = in_array( $input['line_bind_coupon_type'] ?? '', $allowed_coupon_types, true )
 			? $input['line_bind_coupon_type']
 			: 'fixed_cart';
@@ -1215,10 +1221,12 @@ class WCLON_Settings {
 									<select id="wclon_coupon_type" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[line_bind_coupon_type]">
 										<option value="fixed_cart" <?php selected( $coupon_type, 'fixed_cart' ); ?>>固定金額折扣</option>
 										<option value="percent"    <?php selected( $coupon_type, 'percent' ); ?>>百分比折扣</option>
+										<option value="free_shipping" <?php selected( $coupon_type, 'free_shipping' ); ?>>免運費</option>
 									</select>
+									<p class="description" id="wclon_coupon_free_shipping_note"<?php echo 'free_shipping' === $coupon_type ? '' : ' style="display:none"'; ?>>免運券要搭配「免費運送」運送方式：到 WooCommerce → 設定 → 運送 → 運送區域，在區域裡加入「免費運送」，「如果要免運費的話需要..」選「有效的免運折價券」（或其他含折價券的選項）。沒有這個運送方式時，顧客套用優惠券也不會免運。</p>
 								</td>
 							</tr>
-							<tr>
+							<tr id="wclon_coupon_amount_row"<?php echo 'free_shipping' === $coupon_type ? ' style="display:none"' : ''; ?>>
 								<th scope="row"><label for="wclon_coupon_amount">折扣數值</label></th>
 								<td>
 									<input type="number" id="wclon_coupon_amount" step="0.01" min="0" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[line_bind_coupon_amount]" value="<?php echo esc_attr( $coupon_amount ); ?>" class="small-text">

@@ -295,6 +295,9 @@
 		function couponAmountText() {
 			var type   = val('wclon_coupon_type', 'fixed_cart');
 			var amount = parseFloat(val('wclon_coupon_amount', '100')) || 0;
+			if ('free_shipping' === type) {
+				return '免運費';
+			}
 			if ('percent' === type) {
 				return amount.toFixed(2).replace(/0+$/, '').replace(/\.$/, '') + '%';
 			}
@@ -411,6 +414,18 @@
 			wclon_coupon_type: 'coupon',
 			wclon_coupon_amount: 'coupon'
 		};
+
+		// 免運券沒有折扣數值：隱藏數值列、顯示運送方式設定提示
+		var couponType = document.getElementById('wclon_coupon_type');
+		if (couponType) {
+			couponType.addEventListener('change', function () {
+				var free = 'free_shipping' === couponType.value;
+				var amountRow = document.getElementById('wclon_coupon_amount_row');
+				var note      = document.getElementById('wclon_coupon_free_shipping_note');
+				if (amountRow) amountRow.style.display = free ? 'none' : '';
+				if (note) note.style.display = free ? '' : 'none';
+			});
+		}
 
 		var typeSel = document.getElementById('wclon_flex_preview_type');
 		if (typeSel) {

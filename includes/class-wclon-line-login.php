@@ -552,7 +552,7 @@ class WCLON_Line_Login {
 			(int) WCLON_Settings::get( 'line_bind_coupon_expiry_days', 30 ),
 			(float) WCLON_Settings::get( 'line_bind_coupon_min_spend', 0 ),
 			'LINE 綁定歡迎禮',
-			'感謝您綁定 LINE 帳號，折抵 ' . WCLON_Settings::format_coupon_amount( $type, $amount ),
+			'free_shipping' === $type ? '感謝您綁定 LINE 帳號，享免運費' : '感謝您綁定 LINE 帳號，折抵 ' . WCLON_Settings::format_coupon_amount( $type, $amount ),
 			sprintf( 'LINE 綁定歡迎優惠券（會員 #%d）', $user_id )
 		);
 	}
