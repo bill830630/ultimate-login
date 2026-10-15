@@ -216,10 +216,8 @@ class WCAN_Notifier {
 		$order->update_meta_data( '_wcan_notified', 1 );
 		$order->save();
 
-		if ( empty( $failures ) ) {
-			$order->add_order_note( sprintf( '【新訂單 LINE 通知】已通知 %d 個群組/聊天室。', count( $recipients ) ) );
-		} else {
-			$order->add_order_note( sprintf( '【新訂單 LINE 通知】%d/%d 發送失敗：%s', count( $failures ), count( $recipients ), implode( '; ', $failures ) ) );
+		if ( $failures ) {
+			error_log( sprintf( 'WCAN 訂單 #%d 新訂單通知 %d/%d 發送失敗：%s', $order->get_id(), count( $failures ), count( $recipients ), implode( '; ', $failures ) ) ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		}
 	}
 

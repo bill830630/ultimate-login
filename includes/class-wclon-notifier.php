@@ -145,13 +145,11 @@ class WCLON_Notifier {
 
 		$line_user_id = self::resolve_line_user_id( $order );
 		if ( ! $line_user_id ) {
-			$order->add_order_note( '【LINE 通知】未發送：顧客尚未綁定 LINE。' );
 			return;
 		}
 
 		$customer_id = $order->get_customer_id();
 		if ( $customer_id && ! WCLON_Line_Login::get_notify_enabled( $customer_id ) ) {
-			$order->add_order_note( '【LINE 通知】未發送：顧客已關閉 LINE 訂單通知。' );
 			return;
 		}
 
@@ -162,9 +160,8 @@ class WCLON_Notifier {
 			$sent_log[] = $new_status;
 			$order->update_meta_data( '_wclon_sent_statuses', $sent_log );
 			$order->save();
-			$order->add_order_note( sprintf( '【LINE 通知】已發送「%s」狀態通知。', wc_get_order_status_name( $new_status ) ) );
 		} else {
-			$order->add_order_note( '【LINE 通知】發送失敗：' . $result );
+			error_log( 'WCLON 訂單 #' . $order->get_id() . ' LINE 狀態通知發送失敗：' . $result ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		}
 	}
 
@@ -212,7 +209,7 @@ class WCLON_Notifier {
 		$result  = self::push_message( $line_user_id, $message );
 
 		if ( true !== $result ) {
-			$order->add_order_note( '【LINE 備注通知】發送失敗：' . $result );
+			error_log( 'WCLON 訂單 #' . $order->get_id() . ' LINE 備注通知發送失敗：' . $result ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		}
 	}
 
@@ -223,8 +220,7 @@ class WCLON_Notifier {
 	 * 訂單備注新增時都會觸發），用固定前綴字串判斷是不是這則物流備注。只讀取，不修改 ecpay 外掛、
 	 * 也不重新實作它的物流 API 或 webhook 驗證邏輯，避免跟第三方外掛耦合。
 	 *
-	 * 這個 handler 失敗時也會呼叫 add_order_note()，會再次觸發同一個 hook，但因為我們自己寫的備注
-	 * 內容不是「物流貨態回傳:」開頭，下面的前綴判斷會直接 return，不會形成無限迴圈。
+	 * LINE 推播結果不寫訂單備注（v1.44.4 起），失敗只寫 error_log。
 	 *
 	 * @param int      $comment_id add_order_note() 寫入後的留言 ID
 	 * @param WC_Order $order
@@ -266,7 +262,7 @@ class WCLON_Notifier {
 		$result  = self::push_message( $line_user_id, $message );
 
 		if ( true !== $result ) {
-			$order->add_order_note( '【LINE 物流通知】發送失敗：' . $result );
+			error_log( 'WCLON 訂單 #' . $order->get_id() . ' LINE 物流通知發送失敗：' . $result ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		}
 	}
 
