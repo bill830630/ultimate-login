@@ -155,10 +155,7 @@ class WCAN_Notifier {
 			'新表單送出'
 		);
 		foreach ( $recipients as $group_id ) {
-			$result = self::push_message( $group_id, $message );
-			if ( true !== $result ) {
-				error_log( 'WCAN 表單通知推播失敗（' . $group_id . '）：' . $result ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			}
+			WCLON_Line_API::queue( $group_id, $message, '表單通知 → ' . $group_id );
 		}
 	}
 
@@ -204,20 +201,12 @@ class WCAN_Notifier {
 			return;
 		}
 
-		$message  = self::build_new_order_flex( $order );
-		$failures = array();
-		foreach ( $recipients as $line_user_id ) {
-			$result = self::push_message( $line_user_id, $message );
-			if ( true !== $result ) {
-				$failures[] = $result;
-			}
-		}
-
 		$order->update_meta_data( '_wcan_notified', 1 );
 		$order->save();
 
-		if ( $failures ) {
-			error_log( sprintf( 'WCAN 訂單 #%d 新訂單通知 %d/%d 發送失敗：%s', $order->get_id(), count( $failures ), count( $recipients ), implode( '; ', $failures ) ) ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+		$message = self::build_new_order_flex( $order );
+		foreach ( $recipients as $group_id ) {
+			WCLON_Line_API::queue( $group_id, $message, '訂單 #' . $order->get_id() . ' 新訂單通知 → ' . $group_id );
 		}
 	}
 
@@ -244,7 +233,7 @@ class WCAN_Notifier {
 			home_url()
 		);
 
-		return self::push_message( $line_user_id, $message );
+		return WCLON_Line_API::push( $line_user_id, $message );
 	}
 
 	/**
@@ -375,60 +364,5 @@ class WCAN_Notifier {
 				),
 			),
 		);
-	}
-
-	/**
-	 * 呼叫 LINE Messaging API push endpoint
-	 *
-	 * @param string $line_user_id
-	 * @param array  $message LINE message 物件
-	 * @return true|string true 表示成功，字串為錯誤訊息
-	 */
-	private static function push_message( $line_user_id, array $message ) {
-		// Channel Access Token 為顧客／管理員通知共用欄位，v1.8.2 起集中存在 wclon_settings
-		$token = WCLON_Settings::get( 'channel_access_token' );
-		if ( ! $token ) {
-			return '尚未設定 Channel Access Token。';
-		}
-
-		$response = wp_remote_post( 'https://api.line.me/v2/bot/message/push', array(
-			'timeout' => 15,
-			'headers' => array(
-				'Content-Type'  => 'application/json',
-				'Authorization' => 'Bearer ' . $token,
-			),
-			'body'    => wp_json_encode( array(
-				'to'       => $line_user_id,
-				'messages' => array( $message ),
-			) ),
-		) );
-
-		if ( is_wp_error( $response ) ) {
-			return $response->get_error_message();
-		}
-
-		$code = wp_remote_retrieve_response_code( $response );
-		if ( 200 === $code ) {
-			return true;
-		}
-
-		$body = json_decode( wp_remote_retrieve_body( $response ), true );
-		$msg  = $body['message'] ?? '未知錯誤';
-
-		if ( 400 === $code && 'Failed to send messages' === $msg ) {
-			// LINE 對「ID 格式正確但送不到」只回這句（已實測）：官方帳號不在該群組/聊天室
-			// （被移出、群組已解散），或 ID 屬於另一個官方帳號的群組。
-			$msg = '無法送達：官方帳號不在這個群組/聊天室裡（可能已被移出或群組已解散），或這個 ID 屬於另一個官方帳號';
-		} elseif ( 400 === $code && str_contains( $msg, "'to'" ) ) {
-			$msg = '群組/聊天室 ID 格式不正確';
-		} elseif ( 403 === $code ) {
-			$msg .= '（對方可能尚未加官方帳號好友，或已封鎖）';
-		} elseif ( 429 === $code ) {
-			$msg .= '（已達本月訊息額度上限）';
-		} elseif ( 401 === $code ) {
-			$msg .= '（Access Token 無效或過期）';
-		}
-
-		return sprintf( 'HTTP %d - %s', $code, $msg );
 	}
 }

@@ -3,7 +3,7 @@
  * Plugin Name: Ultimate Login
  * Plugin URI:  https://example.com
  * Description: 讓使用者透過 LINE、Google、Apple 登入綁定帳號，並可推播網站表單到管理員/員工共用的 LINE 群組。安裝 WooCommerce 時另外提供訂單狀態推播給顧客、新訂單群組通知、綁定歡迎優惠券與結帳頁綁定列。
- * Version:     1.44.4
+ * Version:     1.45.0
  * Author:      快捷鍵Ctrl+A
  * Text Domain: ultimate-login
  * Requires PHP: 8.0
@@ -44,7 +44,7 @@ if ( defined( 'WCLON_VERSION' ) ) {
 	return;
 }
 
-define( 'WCLON_VERSION', '1.44.4' );
+define( 'WCLON_VERSION', '1.45.0' );
 define( 'WCLON_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WCLON_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 // 會員中心「帳號綁定」獨立頁面的 WC Account endpoint slug
@@ -60,6 +60,8 @@ require_once WCLON_PLUGIN_DIR . 'includes/class-wclon-verify.php';
 require_once WCLON_PLUGIN_DIR . 'includes/class-wclon-line-login.php';
 require_once WCLON_PLUGIN_DIR . 'includes/class-wclon-google-login.php';
 require_once WCLON_PLUGIN_DIR . 'includes/class-wclon-apple-login.php';
+// LINE Messaging API push 共用層：背景發送、重試、Token／額度錯誤提醒（v1.45.0）
+require_once WCLON_PLUGIN_DIR . 'includes/class-wclon-line-api.php';
 require_once WCLON_PLUGIN_DIR . 'includes/class-wclon-notifier.php';
 // 管理員/員工 LINE 群組通知（v1.8.0 起與原本獨立的 wc-line-admin-notify 外掛合併）
 require_once WCLON_PLUGIN_DIR . 'includes/class-wcan-settings.php';
@@ -112,6 +114,8 @@ add_action( 'plugins_loaded', function () {
 	// 訂單通知模組啟用時才掛，關掉訂單通知會讓補發靜默失效。
 	if ( WCLON_Settings::module_enabled( 'order_notify' ) || WCLON_Settings::module_enabled( 'social_login' ) ) {
 		WCAN_Webhook::init();
+		// 推播來源橫跨兩個模組（訂單／表單通知、綁定歡迎優惠券），背景佇列的處理器任一啟用就要掛
+		WCLON_Line_API::init();
 	}
 	if ( WCLON_Settings::module_enabled( 'system_email' ) ) {
 		WCLON_System_Email_Settings::init();

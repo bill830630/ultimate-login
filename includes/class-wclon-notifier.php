@@ -42,6 +42,7 @@ class WCLON_Notifier {
 			// 物流狀態通知（v1.17.0 新增）：只讀 ecpay-ecommerce-for-woocommerce 外掛寫入的訂單備注，
 			// 不修改該外掛、也不重新實作物流 API，見 maybe_notify_logistics_note()
 			add_action( 'woocommerce_order_note_added', array( __CLASS__, 'maybe_notify_logistics_note' ), 10, 2 );
+			add_action( 'wclon_line_push_failed', array( __CLASS__, 'on_push_failed' ), 10, 1 );
 		}
 
 		foreach ( array_keys( self::$email_status_map ) as $email_id ) {
@@ -153,16 +154,32 @@ class WCLON_Notifier {
 			return;
 		}
 
-		$message = self::build_flex_message( $order, $new_status );
-		$result  = self::push_message( $line_user_id, $message );
+		// 排進背景前先記為已發送：同一次請求裡 checkout_order_created 與 status_changed 可能都觸發，
+		// 背景還沒跑完前第二次判斷要能擋下。最終發送失敗時由 on_push_failed() 撤銷，讓下次進入同一狀態能重試。
+		$sent_log[] = $new_status;
+		$order->update_meta_data( '_wclon_sent_statuses', $sent_log );
+		$order->save();
 
-		if ( true === $result ) {
-			$sent_log[] = $new_status;
-			$order->update_meta_data( '_wclon_sent_statuses', $sent_log );
-			$order->save();
-		} else {
-			error_log( 'WCLON 訂單 #' . $order->get_id() . ' LINE 狀態通知發送失敗：' . $result ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+		WCLON_Line_API::queue(
+			$line_user_id,
+			self::build_flex_message( $order, $new_status ),
+			'訂單 #' . $order->get_id() . ' 狀態通知',
+			array( 'type' => 'order_status', 'order_id' => $order->get_id(), 'status' => $new_status )
+		);
+	}
+
+	/** 背景推播最終失敗：撤銷「已發送」紀錄 */
+	public static function on_push_failed( $context ) {
+		if ( 'order_status' !== ( $context['type'] ?? '' ) ) {
+			return;
 		}
+		$order = wc_get_order( $context['order_id'] ?? 0 );
+		if ( ! $order ) {
+			return;
+		}
+		$sent_log = array_values( array_diff( (array) $order->get_meta( '_wclon_sent_statuses' ), array( $context['status'] ) ) );
+		$order->update_meta_data( '_wclon_sent_statuses', $sent_log );
+		$order->save();
 	}
 
 	/**
@@ -205,12 +222,7 @@ class WCLON_Notifier {
 			return;
 		}
 
-		$message = self::build_note_flex_message( $order, $note );
-		$result  = self::push_message( $line_user_id, $message );
-
-		if ( true !== $result ) {
-			error_log( 'WCLON 訂單 #' . $order->get_id() . ' LINE 備注通知發送失敗：' . $result ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		}
+		WCLON_Line_API::queue( $line_user_id, self::build_note_flex_message( $order, $note ), '訂單 #' . $order->get_id() . ' 備注通知' );
 	}
 
 	/**
@@ -220,7 +232,7 @@ class WCLON_Notifier {
 	 * 訂單備注新增時都會觸發），用固定前綴字串判斷是不是這則物流備注。只讀取，不修改 ecpay 外掛、
 	 * 也不重新實作它的物流 API 或 webhook 驗證邏輯，避免跟第三方外掛耦合。
 	 *
-	 * LINE 推播結果不寫訂單備注（v1.44.4 起），失敗只寫 error_log。
+	 * LINE 推播結果不寫訂單備注（v1.44.4 起），失敗由 WCLON_Line_API 寫 error_log。
 	 *
 	 * @param int      $comment_id add_order_note() 寫入後的留言 ID
 	 * @param WC_Order $order
@@ -258,12 +270,7 @@ class WCLON_Notifier {
 			return;
 		}
 
-		$message = self::build_logistics_flex_message( $order, $message_text );
-		$result  = self::push_message( $line_user_id, $message );
-
-		if ( true !== $result ) {
-			error_log( 'WCLON 訂單 #' . $order->get_id() . ' LINE 物流通知發送失敗：' . $result ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		}
+		WCLON_Line_API::queue( $line_user_id, self::build_logistics_flex_message( $order, $message_text ), '訂單 #' . $order->get_id() . ' 物流通知' );
 	}
 
 	/**
@@ -488,7 +495,6 @@ class WCLON_Notifier {
 	 *
 	 * @param string    $line_user_id
 	 * @param WC_Coupon $coupon
-	 * @return true|string true 表示成功，字串為錯誤訊息
 	 */
 	public static function send_bind_coupon_notice( $line_user_id, $coupon ) {
 		$site_name = get_bloginfo( 'name' );
@@ -542,7 +548,7 @@ class WCLON_Notifier {
 			wc_get_page_permalink( 'shop' ) ?: home_url()
 		);
 
-		return self::push_message( $line_user_id, $message );
+		WCLON_Line_API::queue( $line_user_id, $message, '綁定歡迎優惠券 ' . $code );
 	}
 
 	/**
@@ -590,7 +596,7 @@ class WCLON_Notifier {
 			home_url()
 		);
 
-		return self::push_message( $line_user_id, $message );
+		return WCLON_Line_API::push( $line_user_id, $message );
 	}
 
 	/**
@@ -684,53 +690,5 @@ class WCLON_Notifier {
 			$row['margin'] = $margin;
 		}
 		return $row;
-	}
-
-	/**
-	 * 呼叫 LINE Messaging API push endpoint
-	 *
-	 * @param string $line_user_id
-	 * @param array  $message LINE message 物件
-	 * @return true|string true 表示成功，字串為錯誤訊息
-	 */
-	private static function push_message( $line_user_id, array $message ) {
-		$token = WCLON_Settings::get( 'channel_access_token' );
-		if ( ! $token ) {
-			return '尚未設定 Channel Access Token。';
-		}
-
-		$response = wp_remote_post( 'https://api.line.me/v2/bot/message/push', array(
-			'timeout' => 15,
-			'headers' => array(
-				'Content-Type'  => 'application/json',
-				'Authorization' => 'Bearer ' . $token,
-			),
-			'body'    => wp_json_encode( array(
-				'to'       => $line_user_id,
-				'messages' => array( $message ),
-			) ),
-		) );
-
-		if ( is_wp_error( $response ) ) {
-			return $response->get_error_message();
-		}
-
-		$code = wp_remote_retrieve_response_code( $response );
-		if ( 200 === $code ) {
-			return true;
-		}
-
-		$body = json_decode( wp_remote_retrieve_body( $response ), true );
-		$msg  = $body['message'] ?? '未知錯誤';
-
-		if ( 403 === $code ) {
-			$msg .= '（顧客可能尚未加官方帳號好友，或已封鎖）';
-		} elseif ( 429 === $code ) {
-			$msg .= '（已達本月訊息額度上限）';
-		} elseif ( 401 === $code ) {
-			$msg .= '（Access Token 無效或過期）';
-		}
-
-		return sprintf( 'HTTP %d - %s', $code, $msg );
 	}
 }

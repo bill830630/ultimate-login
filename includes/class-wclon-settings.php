@@ -806,6 +806,7 @@ class WCLON_Settings {
 								<td>
 									<textarea id="wclon_channel_access_token" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[channel_access_token]"<?php echo $form_attr ? ' form="' . esc_attr( $form_attr ) . '"' : ''; ?> rows="3" class="large-text" placeholder="長效 Channel Access Token"><?php echo esc_textarea( self::get( 'channel_access_token' ) ); ?></textarea>
 									<p class="description">在 LINE Developers Console 的 Messaging API channel 頁籤取得。只需填一次，顧客通知與管理員群組通知共用同一組 Token。</p>
+									<?php WCLON_Line_API::render_quota_line(); ?>
 								</td>
 							</tr>
 						</table>
