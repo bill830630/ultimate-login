@@ -368,7 +368,20 @@ class WCLON_Settings {
 	}
 
 	private static function social_block_visible() {
-		return WCLON_Verify::ready( 'google' ) || WCLON_Verify::ready( 'apple' );
+		return self::social_chip_visible( 'google' ) || self::social_chip_visible( 'apple' );
+	}
+
+	/**
+	 * Google／Apple chip 要不要出現：憑證已驗證，且目前會員還沒綁定這個平台。
+	 * v1.47.2 起已綁定的平台不再顯示打勾 chip（購物車／結帳頁不需要提醒已完成的事），
+	 * 兩個都綁了整區不輸出——跟 LINE 區「已綁定就隱藏」一致。
+	 */
+	private static function social_chip_visible( $provider ) {
+		if ( ! WCLON_Verify::ready( $provider ) ) {
+			return false;
+		}
+		$meta_key = 'google' === $provider ? WCLON_Google_Login::USER_META_KEY : WCLON_Apple_Login::USER_META_KEY;
+		return ! ( is_user_logged_in() && get_user_meta( get_current_user_id(), $meta_key, true ) );
 	}
 
 	public static function default_line_bar_title() {
@@ -416,16 +429,16 @@ class WCLON_Settings {
 			. '</div>';
 	}
 
-	/** Google / Apple 區：單純的快速登入，沒有通知功能，文案刻意與 LINE 區分開 */
+	/** Google / Apple 區：單純的快速登入，沒有通知功能，文案刻意與 LINE 區分開；已綁定的平台不輸出 */
 	private static function render_social_block() {
 		if ( ! self::social_block_visible() ) {
 			return '';
 		}
 		$chips = '';
-		if ( class_exists( 'WCLON_Google_Login' ) ) {
+		if ( class_exists( 'WCLON_Google_Login' ) && self::social_chip_visible( 'google' ) ) {
 			$chips .= WCLON_Google_Login::render_checkout_chip();
 		}
-		if ( class_exists( 'WCLON_Apple_Login' ) ) {
+		if ( class_exists( 'WCLON_Apple_Login' ) && self::social_chip_visible( 'apple' ) ) {
 			$chips .= WCLON_Apple_Login::render_checkout_chip();
 		}
 		if ( '' === trim( $chips ) ) {
