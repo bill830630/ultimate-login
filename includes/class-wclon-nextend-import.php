@@ -19,17 +19,17 @@ class WCLON_Nextend_Import {
 	const NONCE      = 'wclon_nextend_import';
 
 	/**
-	 * Nextend type → 終極登入 meta key 與 identifier 格式。
-	 * Google `id`（userinfo）= OIDC `sub`，跨 OAuth client 不變；LINE userId 依 Provider 發放；
-	 * Apple sub 依 Team ID。LINE／Apple 是 Nextend Pro 功能，格式依各平台規格而非 Nextend 原始碼，
-	 * 不符的筆數會在報告列出不匯入。
+	 * Nextend type → 終極登入 meta key 與 identifier 格式（依 Nextend 3.1.26 免費版＋Pro 原始碼）。
+	 * Google 存 userinfo `id`（= OIDC `sub`，跨 OAuth client 不變）；LINE 存 `/profile` 的 `userId`
+	 * （依 Provider 發放）；Apple 存 id_token 原始 `sub`（依 Team ID）。三者都跟終極登入存的是同一個值。
+	 * Apple sub 格式沒有官方文件，只擋明顯不是 ID 的值。不符的筆數會在報告列出不匯入。
 	 */
 	public static function providers() {
 		return array(
 			'google' => array(
 				'label'   => 'Google',
 				'meta'    => WCLON_Google_Login::USER_META_KEY,
-				'pattern' => '/^\d{5,32}$/',
+				'pattern' => '/^\d{5,255}$/',
 				'format'  => '純數字',
 			),
 			'line'   => array(
@@ -41,14 +41,15 @@ class WCLON_Nextend_Import {
 			'apple'  => array(
 				'label'   => 'Apple',
 				'meta'    => WCLON_Apple_Login::USER_META_KEY,
-				'pattern' => '/^\d{6}\.[0-9a-f]{32}\.\d{4}$/',
-				'format'  => '000000.32碼十六進位.0000',
+				'pattern' => '/^[0-9A-Za-z._-]{10,255}$/',
+				'format'  => '英數字與 . _ -，10 字元以上',
 			),
 		);
 	}
 
 	/**
-	 * 憑證對應：終極登入欄位 → Nextend option 裡可能的 key（Pro 版的 key 名稱看不到原始碼，列候選）。
+	 * 憑證對應：終極登入欄位 → Nextend option 的 key（依 Pro 3.1.26 原始碼）。Apple 的 `client_id`
+	 * 是 Nextend 儲存時從 `service_identifier` 複製來的（清除憑證時會被清空），所以先讀後者。
 	 */
 	private static function credential_map() {
 		return array(
@@ -57,13 +58,13 @@ class WCLON_Nextend_Import {
 				'google_client_secret' => array( 'client_secret' ),
 			),
 			'line'   => array(
-				'login_channel_id'     => array( 'client_id', 'channel_id' ),
-				'login_channel_secret' => array( 'client_secret', 'channel_secret' ),
+				'login_channel_id'     => array( 'client_id' ),
+				'login_channel_secret' => array( 'client_secret' ),
 			),
 			'apple'  => array(
-				'apple_client_id'   => array( 'client_id', 'service_identifier', 'service_id' ),
-				'apple_team_id'     => array( 'team_id', 'team_identifier' ),
-				'apple_key_id'      => array( 'private_key_id', 'key_id' ),
+				'apple_client_id'   => array( 'service_identifier', 'client_id' ),
+				'apple_team_id'     => array( 'team_identifier' ),
+				'apple_key_id'      => array( 'private_key_id' ),
 				'apple_private_key' => array( 'private_key' ),
 			),
 		);
