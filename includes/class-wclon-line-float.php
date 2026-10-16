@@ -83,7 +83,7 @@ class WCLON_Line_Float {
 		}
 		?>
 		<a class="wclon-line-float wclon-line-float--<?php echo esc_attr( self::position() ); ?>" href="<?php echo esc_url( $target['url'] ); ?>"<?php echo $target['blank'] ? ' target="_blank" rel="noopener noreferrer"' : ''; ?> aria-label="<?php echo esc_attr( $target['label'] ); ?>">
-			<svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 2C6.48 2 2 5.75 2 10.36c0 4.13 3.56 7.6 8.37 8.26.33.07.77.22.88.5.1.25.07.65.03.9l-.14.85c-.04.25-.2.99.87.54 1.07-.45 5.76-3.39 7.86-5.8C21.3 13.9 22 12.2 22 10.36 22 5.75 17.52 2 12 2zM8.2 12.9H6.1a.5.5 0 0 1-.5-.5V8.5a.5.5 0 0 1 1 0v3.4h1.6a.5.5 0 0 1 0 1zm2.5-.5a.5.5 0 0 1-1 0V8.5a.5.5 0 0 1 1 0v3.9zm5 0a.5.5 0 0 1-.9.3l-2.1-2.85v2.55a.5.5 0 0 1-1 0V8.5a.5.5 0 0 1 .9-.3l2.1 2.85V8.5a.5.5 0 0 1 1 0v3.9zm3.1-2.3a.5.5 0 0 1 0 1h-1.6v.8h1.6a.5.5 0 0 1 0 1h-2.1a.5.5 0 0 1-.5-.5V8.5a.5.5 0 0 1 .5-.5h2.1a.5.5 0 0 1 0 1h-1.6v1.1h1.6z"/></svg>
+			<svg viewBox="0 0 24 24" width="38" height="38" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 2C6.48 2 2 5.75 2 10.36c0 4.13 3.56 7.6 8.37 8.26.33.07.77.22.88.5.1.25.07.65.03.9l-.14.85c-.04.25-.2.99.87.54 1.07-.45 5.76-3.39 7.86-5.8C21.3 13.9 22 12.2 22 10.36 22 5.75 17.52 2 12 2zM8.2 12.9H6.1a.5.5 0 0 1-.5-.5V8.5a.5.5 0 0 1 1 0v3.4h1.6a.5.5 0 0 1 0 1zm2.5-.5a.5.5 0 0 1-1 0V8.5a.5.5 0 0 1 1 0v3.9zm5 0a.5.5 0 0 1-.9.3l-2.1-2.85v2.55a.5.5 0 0 1-1 0V8.5a.5.5 0 0 1 .9-.3l2.1 2.85V8.5a.5.5 0 0 1 1 0v3.9zm3.1-2.3a.5.5 0 0 1 0 1h-1.6v.8h1.6a.5.5 0 0 1 0 1h-2.1a.5.5 0 0 1-.5-.5V8.5a.5.5 0 0 1 .5-.5h2.1a.5.5 0 0 1 0 1h-1.6v1.1h1.6z"/></svg>
 		</a>
 		<?php
 	}
