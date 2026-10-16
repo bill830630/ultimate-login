@@ -56,7 +56,7 @@
 			nav.style.display = isActive && !nav.classList.contains('is-single') ? 'block' : 'none';
 		});
 		var mainSubmit = document.getElementById('wclon-main-submit');
-		if (mainSubmit) mainSubmit.style.display = tabId === 'license' ? 'none' : '';
+		if (mainSubmit) mainSubmit.style.display = (tabId === 'license' || tabId === 'nextend') ? 'none' : '';
 		var licenseNotice = document.getElementById('wclon-license-inline-notice');
 		if (licenseNotice) licenseNotice.style.display = tabId === 'license' ? 'none' : '';
 		try {

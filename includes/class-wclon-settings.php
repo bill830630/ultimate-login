@@ -823,6 +823,9 @@ class WCLON_Settings {
 		$system_tabs = array();
 		if ( $can_manage_license ) $system_tabs['license'] = '授權';
 		if ( $mod_sysmail ) $system_tabs['sysmail'] = '系統信件';
+		// Nextend 轉移（v1.47.0）：偵測到 Nextend 的 social_users 表才出現
+		$show_nextend = $can_manage_modules && $mod_social && WCLON_Nextend_Import::available();
+		if ( $show_nextend ) $system_tabs['nextend'] = 'Nextend 轉移';
 		if ( $can_manage_modules ) $system_tabs['modules'] = '模組';
 		if ( $system_tabs ) {
 			$tab_groups['system'] = array( 'label' => '系統設定', 'tabs' => $system_tabs );
@@ -1384,6 +1387,13 @@ class WCLON_Settings {
 			<div class="wclon-admin-wrap wclon-tab-pane" data-tab="sysmail" style="display:none;">
 				<?php WCLON_System_Email_Settings::render_tab_content(); ?>
 			</div><!-- /wclon-tab-sysmail -->
+			<?php endif; ?>
+
+			<?php if ( $show_nextend ) : ?>
+			<!-- ══ Nextend 轉移 Tab（各自的 admin-post 表單，不用共用儲存按鈕） ══ -->
+			<div class="wclon-admin-wrap wclon-tab-pane" data-tab="nextend" style="display:none;">
+				<?php WCLON_Nextend_Import::render_tab_content(); ?>
+			</div><!-- /wclon-tab-nextend -->
 			<?php endif; ?>
 
 			<?php if ( $can_manage_modules ) : ?>

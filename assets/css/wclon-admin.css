@@ -661,3 +661,13 @@
 .wclon-verify-status--changed { color: #996800; }
 .wclon-verify-error { color: #d63638; }
 .wclon-turnstile-verify-box { margin: 8px 0; }
+
+/* Nextend 轉移（v1.47.0） */
+.wclon-nextend-steps { margin: 0 0 0 1.5em; }
+.wclon-nextend-steps li { margin-bottom: 8px; }
+.wclon-nextend-steps ul { margin: 6px 0 0 1.2em; list-style: disc; }
+.wclon-nextend-table { margin: 12px 0; }
+.wclon-nextend-table th, .wclon-nextend-table td { white-space: nowrap; }
+.wclon-card .wclon-nextend-table { display: block; overflow-x: auto; }
+.wclon-nextend-notes { margin: 8px 0 12px 1.2em; list-style: disc; }
+.wclon-nextend-form { margin-top: 12px; }

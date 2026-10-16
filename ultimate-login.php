@@ -3,7 +3,7 @@
  * Plugin Name: Ultimate Login
  * Plugin URI:  https://example.com
  * Description: 讓使用者透過 LINE、Google、Apple 登入綁定帳號，並可推播網站表單到管理員/員工共用的 LINE 群組。安裝 WooCommerce 時另外提供訂單狀態推播給顧客、新訂單群組通知、綁定歡迎優惠券與結帳頁綁定列。
- * Version:     1.46.0
+ * Version:     1.47.0
  * Author:      快捷鍵Ctrl+A
  * Text Domain: ultimate-login
  * Requires PHP: 8.0
@@ -44,7 +44,7 @@ if ( defined( 'WCLON_VERSION' ) ) {
 	return;
 }
 
-define( 'WCLON_VERSION', '1.46.0' );
+define( 'WCLON_VERSION', '1.47.0' );
 define( 'WCLON_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WCLON_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 // 會員中心「帳號綁定」獨立頁面的 WC Account endpoint slug
@@ -57,6 +57,7 @@ require_once WCLON_PLUGIN_DIR . 'includes/class-wclon-license.php';
 require_once WCLON_PLUGIN_DIR . 'includes/class-wclon-oauth.php';
 // 憑證驗證綁定（v1.43.0 新增）：LINE／Google／Apple 登入與 Turnstile 的金鑰驗證通過才生效
 require_once WCLON_PLUGIN_DIR . 'includes/class-wclon-verify.php';
+require_once WCLON_PLUGIN_DIR . 'includes/class-wclon-nextend-import.php';
 require_once WCLON_PLUGIN_DIR . 'includes/class-wclon-line-login.php';
 require_once WCLON_PLUGIN_DIR . 'includes/class-wclon-google-login.php';
 require_once WCLON_PLUGIN_DIR . 'includes/class-wclon-apple-login.php';
@@ -86,6 +87,8 @@ add_action( 'plugins_loaded', function () {
 	WCLON_Updater::init();
 	// 不受授權管轄：升級時要先把既有憑證標成已驗證，未授權時設定頁也要能驗證
 	WCLON_Verify::init();
+	// Nextend 轉移工具（v1.47.0）：純後台、僅限 manage_options，不受授權與模組開關管轄
+	WCLON_Nextend_Import::init();
 
 	// 設定頁、授權處理與更新檢查保持可用；其餘功能需有效授權才載入。
 	if ( ! WCLON_License::is_active() ) {
