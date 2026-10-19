@@ -80,6 +80,9 @@ LINE／Google／Apple 登入與 Turnstile 的金鑰填好、儲存後，要在�
 
 ## 變更紀錄
 
+### 1.47.3
+- 相容性：已在 WordPress 7.1 與 WooCommerce 11.2 完成測試；修正新版 PHP 在前台每頁記錄一筆 Deprecated 警告的問題（懸浮 LINE 按鈕），功能不變。
+
 ### 1.47.2
 - 調整：購物車與結帳頁的「快速登入或註冊」區塊不再顯示已經綁定的 Google／Apple；兩個都綁定了，整個區塊就不出現。
 

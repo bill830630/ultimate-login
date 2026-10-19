@@ -52,7 +52,7 @@ class WCLON_Line_Float {
 	 */
 	private static function target() {
 		if ( ! is_user_logged_in() && WCLON_Verify::ready( 'line' ) ) {
-			$current = set_url_scheme( home_url( add_query_arg( null, null ) ) );
+			$current = set_url_scheme( home_url( add_query_arg( array() ) ) );
 			return array(
 				'url'   => home_url( '/?wclon_action=login&intent=login&redirect=' . rawurlencode( $current ) ),
 				'label' => '使用 LINE 登入',
