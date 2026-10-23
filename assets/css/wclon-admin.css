@@ -671,3 +671,29 @@
 .wclon-card .wclon-nextend-table { display: block; overflow-x: auto; }
 .wclon-nextend-notes { margin: 8px 0 12px 1.2em; list-style: disc; }
 .wclon-nextend-form { margin-top: 12px; }
+
+/* LINE 懸浮按鈕的頁面／分類條件選擇器 */
+.wclon-float-conditions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 8px 16px;
+}
+.wclon-page-picker__search {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.wclon-page-picker__search input[type="search"] { flex: 1 1 220px; min-width: 0; }
+.wclon-page-picker__list { margin: 8px 0; max-height: 280px; overflow-y: auto; }
+.wclon-page-picker__list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0;
+    padding: 8px;
+    border-bottom: 1px solid #dcdcde;
+}
+.wclon-page-picker__list li span { overflow-wrap: anywhere; }
+.wclon-page-picker__list li button { flex: 0 0 auto; }
+.wclon-page-picker [hidden] { display: none !important; }

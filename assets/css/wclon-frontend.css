@@ -497,13 +497,13 @@
 /* ── 懸浮 LINE 聊天按鈕（左／右下角固定，LINE 官方綠）── */
 .wclon-line-float {
     position: fixed;
-    bottom: 20px;
+    bottom: var(--wclon-float-offset-bottom, 20px);
     z-index: 99990;
-    display: flex;
+    display: none;
     align-items: center;
     justify-content: center;
-    width: 56px;
-    height: 56px;
+    width: var(--wclon-float-size, 56px);
+    height: var(--wclon-float-size, 56px);
     border-radius: 50%;
     background: #06c755;
     color: #fff;
@@ -517,10 +517,18 @@
     color: #fff;
     transform: scale(1.06);
 }
-.wclon-line-float--right { right: 20px; }
-.wclon-line-float--left { left: 20px; }
+.wclon-line-float svg { width: 67.857143%; height: 67.857143%; }
+.wclon-line-float--right { right: var(--wclon-float-offset-x, 20px); }
+.wclon-line-float--left { left: var(--wclon-float-offset-x, 20px); }
+@media (min-width: 1025px) {
+    .wclon-line-float--show-desktop { display: flex; }
+}
+@media (min-width: 601px) and (max-width: 1024px) {
+    .wclon-line-float--show-tablet { display: flex; }
+}
 @media (max-width: 600px) {
-    .wclon-line-float { bottom: 14px; }
-    .wclon-line-float--right { right: 14px; }
-    .wclon-line-float--left { left: 14px; }
+    .wclon-line-float--show-mobile { display: flex; }
+    .wclon-line-float { bottom: var(--wclon-float-mobile-offset-bottom, 14px); }
+    .wclon-line-float--right { right: var(--wclon-float-mobile-offset-x, 14px); }
+    .wclon-line-float--left { left: var(--wclon-float-mobile-offset-x, 14px); }
 }

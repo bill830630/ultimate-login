@@ -67,6 +67,7 @@ class WCLON_Settings {
 		// priority 1：早於 register_setting()，寫回時不會經過 sanitize（sanitize 會重建整包 option）
 		add_action( 'admin_init', array( __CLASS__, 'maybe_strip_notification_emoji' ), 1 );
 		add_action( 'admin_init', array( __CLASS__, 'register_module_settings' ) );
+		add_action( 'wp_ajax_wclon_float_search_pages', array( 'WCLON_Line_Float', 'ajax_search_pages' ) );
 		add_action( 'wp_ajax_wclon_test_push', array( __CLASS__, 'ajax_test_push' ) );
 		// 儲存後清除靜態快取，確保同次請求取得最新值
 		add_action( 'update_option_' . self::OPTION_KEY, array( __CLASS__, 'flush_cache' ) );
@@ -204,6 +205,7 @@ class WCLON_Settings {
 		wp_enqueue_style( 'wp-color-picker' );
 		// 設定頁的互動腳本（頁籤、預覽、合併儲存、測試推播），v1.39.0 前是頁面裡的內嵌 <script>
 		wp_enqueue_script( 'wclon-admin', WCLON_PLUGIN_URL . 'assets/js/wclon-admin.js', array( 'jquery', 'wp-color-picker' ), filemtime( WCLON_PLUGIN_DIR . 'assets/js/wclon-admin.js' ), true );
+		wp_enqueue_script( 'wclon-line-float-admin', WCLON_PLUGIN_URL . 'assets/js/wclon-line-float-admin.js', array( 'jquery', 'wclon-admin' ), filemtime( WCLON_PLUGIN_DIR . 'assets/js/wclon-line-float-admin.js' ), true );
 		wp_localize_script( 'wclon-admin', 'wclonAdmin', array(
 			'siteName'    => get_bloginfo( 'name' ),
 			'nonce'       => wp_create_nonce( 'wclon_admin_action' ),
@@ -640,10 +642,19 @@ class WCLON_Settings {
 		$clean['statuses']             = isset( $input['statuses'] ) && is_array( $input['statuses'] )
 			? array_map( 'sanitize_text_field', $input['statuses'] )
 			: array();
-		// 懸浮 LINE 聊天按鈕（v1.44.0）：網址不合法就存空字串，前台因此不會輸出按鈕
+		// 懸浮 LINE 聊天按鈕：聊天網址不合法時存空字串，仍可供已就緒的 LINE 登入使用
 		$clean['line_float_enabled'] = ! empty( $input['line_float_enabled'] ) ? 1 : 0;
 		$clean['line_float_url']     = WCLON_Line_Float::normalize_url( $input['line_float_url'] ?? '' );
 		$clean['line_float_position'] = 'left' === ( $input['line_float_position'] ?? '' ) ? 'left' : 'right';
+		foreach ( array( 'offset_x' => 20, 'offset_bottom' => 20, 'mobile_offset_x' => 14, 'mobile_offset_bottom' => 14, 'size' => 56 ) as $key => $default ) {
+			$clean[ 'line_float_' . $key ] = WCLON_Line_Float::dimension( $input[ 'line_float_' . $key ] ?? '', $default, 'size' === $key ? 40 : 0, 'size' === $key ? 96 : 500 );
+		}
+		$clean['line_float_page_mode'] = in_array( $input['line_float_page_mode'] ?? '', array( 'all', 'include', 'exclude' ), true ) ? $input['line_float_page_mode'] : 'all';
+		$clean['line_float_page_ids']  = WCLON_Line_Float::page_ids( $input['line_float_page_ids'] ?? '' );		$clean['line_float_term_ids'] = WCLON_Line_Float::page_ids( $input['line_float_term_ids'] ?? '' );
+		$conditions = isset( $input['line_float_conditions'] ) && is_array( $input['line_float_conditions'] ) ? array_filter( $input['line_float_conditions'], 'is_string' ) : array();
+		$clean['line_float_conditions'] = array_values( array_intersect( array_keys( WCLON_Line_Float::condition_labels() ), $conditions ) );
+		$clean['line_float_devices']   = isset( $input['line_float_devices'] ) && is_array( $input['line_float_devices'] )
+			? array_values( array_intersect( array( 'desktop', 'tablet', 'mobile' ), array_filter( $input['line_float_devices'], 'is_string' ) ) ) : array();
 		// 社交按鈕顯示位置（全域，套用至所有登入平台）
 		$clean['show_on_checkout']     = ! empty( $input['show_on_checkout'] ) ? 1 : 0;
 		$clean['show_on_cart']         = ! empty( $input['show_on_cart'] ) ? 1 : 0;
@@ -875,7 +886,7 @@ class WCLON_Settings {
 				<div id="wclon-tab-general" class="wclon-tab-pane" data-tab="general" style="display:none;">
 					<div class="wclon-card">
 						<h2 class="wclon-card__title">懸浮 LINE 聊天按鈕</h2>
-						<p class="wclon-card__desc">在網站每個頁面的角落顯示一顆 LINE 圓形按鈕。顧客未登入時點擊會用 LINE 登入（登入後回到原頁面）；已登入則開啟官方帳號聊天。</p>
+						<p class="wclon-card__desc">依頁面與裝置條件，在網站角落顯示可自訂大小及邊距的 LINE 圓形按鈕。顧客未登入時點擊會用 LINE 登入（登入後回到原頁面）；已登入則開啟官方帳號聊天。</p>
 						<table class="form-table">
 							<tr>
 								<th scope="row">啟用</th>
@@ -888,6 +899,47 @@ class WCLON_Settings {
 										<option value="right" <?php selected( self::get( 'line_float_position', 'right' ), 'right' ); ?>>右下角（預設）</option>
 										<option value="left" <?php selected( self::get( 'line_float_position', 'right' ), 'left' ); ?>>左下角</option>
 									</select>
+								</td>
+							</tr>
+							<?php foreach ( array( 'size' => array( '按鈕直徑', 56 ), 'offset_x' => array( '桌面／平板：側邊距離', 20 ), 'offset_bottom' => array( '桌面／平板：底部距離', 20 ), 'mobile_offset_x' => array( '手機：側邊距離', 14 ), 'mobile_offset_bottom' => array( '手機：底部距離', 14 ) ) as $key => $field ) : ?>
+							<tr>
+								<th scope="row"><label for="wclon_line_float_<?php echo esc_attr( $key ); ?>"><?php echo esc_html( $field[0] ); ?></label></th>
+								<td><input type="number" class="small-text" id="wclon_line_float_<?php echo esc_attr( $key ); ?>" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[line_float_<?php echo esc_attr( $key ); ?>]" min="<?php echo 'size' === $key ? '40' : '0'; ?>" max="<?php echo 'size' === $key ? '96' : '500'; ?>" step="1" value="<?php echo esc_attr( self::get( 'line_float_' . $key, $field[1] ) ); ?>"> px<?php if ( 'size' === $key ) : ?><p class="description">直徑 40–96 px，圖示會等比例縮放；邊緣距離可設 0–500 px。側邊距離依左／右下角位置套用。</p><?php endif; ?></td>
+							</tr>
+							<?php endforeach; ?>
+							<tr>
+								<th scope="row"><label for="wclon_line_float_page_mode">頁面顯示條件</label></th>
+								<td>
+									<select id="wclon_line_float_page_mode" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[line_float_page_mode]">
+										<?php foreach ( array( 'all' => '全站顯示', 'include' => '包括：僅在符合條件的頁面顯示', 'exclude' => '排除：符合條件的頁面不顯示' ) as $value => $label ) : ?>
+										<option value="<?php echo esc_attr( $value ); ?>" <?php selected( self::get( 'line_float_page_mode', 'all' ), $value ); ?>><?php echo esc_html( $label ); ?></option>
+										<?php endforeach; ?>
+									</select>
+								</td>
+							</tr>
+							<tr>
+								<th scope="row">頁面類型</th>
+								<td>
+									<fieldset class="wclon-float-conditions"><legend class="screen-reader-text">頁面類型條件</legend>
+									<?php $float_conditions = (array) self::get( 'line_float_conditions', array() ); ?>
+									<?php foreach ( WCLON_Line_Float::condition_labels() as $value => $label ) : ?>
+									<label><input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[line_float_conditions][]" value="<?php echo esc_attr( $value ); ?>" <?php checked( in_array( $value, $float_conditions, true ) ); ?>> <?php echo esc_html( $label ); ?></label>
+									<?php endforeach; ?>
+									</fieldset>
+									<p class="description">類型與下方具名項目任一符合即套用包括／排除；全站模式會忽略這些條件。包括模式未選任何條件時不顯示，排除模式未選時全站顯示。</p>
+								</td>
+							</tr>
+							<tr>
+								<th scope="row">依名稱選擇頁面／分類</th>
+								<td><?php WCLON_Line_Float::render_page_picker(); ?></td>
+							</tr>
+							<tr>
+								<th scope="row">顯示裝置</th>
+								<td>
+									<?php foreach ( array( 'desktop' => '桌面（1025 px 以上）', 'tablet' => '平板（601–1024 px）', 'mobile' => '手機（600 px 以下）' ) as $device => $label ) : ?>
+									<label><input type="checkbox" name="<?php echo esc_attr( self::OPTION_KEY ); ?>[line_float_devices][]" value="<?php echo esc_attr( $device ); ?>" <?php checked( in_array( $device, WCLON_Line_Float::devices(), true ) ); ?>> <?php echo esc_html( $label ); ?></label><br>
+									<?php endforeach; ?>
+									<p class="description">依瀏覽器可視寬度判斷，可複選；全部取消時不顯示。頁面與裝置條件需同時符合。</p>
 								</td>
 							</tr>
 							<tr>
